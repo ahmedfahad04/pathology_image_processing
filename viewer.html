@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>SVS Viewer - TCGA-FJ-A871</title>
+    <style>
+        body { color: navy; font-family: sans-serif; margin: 20px; }
+        h1 { color: brown; }
+        .openseadragon { width: 1024px; height: 800px; border: 1px solid black; background-color: black; }
+        #status { color: red; margin: 10px 0; }
+        code { color: green; font-style: italic; }
+    </style>
+    <!-- OpenSeadragon -->
+    <script src="https://cdn.jsdelivr.net/npm/openseadragon@4.1.1/build/openseadragon/openseadragon.js"></script>
+    <!-- GeoTIFFTileSource with JPEG2000 support (same as episphere/svs) -->
+    <script type="module" crossorigin="anonymous" src="https://cdn.jsdelivr.net/gh/episphere/GeoTIFFTileSource-JPEG2k/GeoTIFFTileSource.js"></script>
+</head>
+<body>
+    <h1>SVS Viewer <sup style="font-size:small;color:navy">[<a href="https://github.com/episphere/svs" target="_blank">episphere/svs</a>]</sup></h1>
+    <p>File: <code>TCGA-FJ-A871-01Z-00-DX5.8F79D0A8-5DE6-4159-AA77-61DACB21E867.svs</code> (1.1GB)</p>
+    <p id="status">Loading image... please wait (large file)</p>
+    <div id="openseadragon1" class="openseadragon"></div>
+    <p style="font-size: small; color: #555;">
+        Viewer uses <code>episphere/svs</code> + OpenSeadragon.GeoTIFFTileSource (same as <a href="https://episphere.github.io/svs">https://episphere.github.io/svs</a>).<br>
+        Use mouse wheel to zoom, drag to pan. If loading hangs, hard-refresh (Ctrl+Shift+R) or check browser console (F12).
+    </p>
+
+    <script type="module">
+        // Wait for OpenSeadragon and GeoTIFFTileSource to load
+        const fileUrl = "./TCGA-FJ-A871-01Z-00-DX5.8F79D0A8-5DE6-4159-AA77-61DACB21E867.svs";
+        const statusEl = document.getElementById("status");
+
+        async function init() {
+            // GeoTIFFTileSource is loaded as ES module side-effect, it registers onto OpenSeadragon
+            // Poll until available (module loads async)
+            let retries = 0;
+            while (!window.OpenSeadragon || !OpenSeadragon.GeoTIFFTileSource) {
+                if (retries++ > 50) {
+                    statusEl.textContent = "Error: GeoTIFFTileSource failed to load. Check network / CDN.";
+                    console.error("GeoTIFFTileSource not found after 5s");
+                    return;
+                }
+                await new Promise(r => setTimeout(r, 100));
+            }
+            statusEl.textContent = "Fetching SVS (Range requests)...";
+            console.log("Loading", fileUrl);
+            try {
+                // getAllTileSources fetches header + tiles via HTTP Range requests
+                const tileSources = await OpenSeadragon.GeoTIFFTileSource.getAllTileSources(fileUrl, { logLatency: false, cache: true, slideOnly: true });
+                console.log("tileSources", tileSources);
+                statusEl.textContent = `Loaded ${tileSources.length} level(s). Rendering...`;
+                document.getElementById("openseadragon1").innerHTML = "";
+                const viewer = OpenSeadragon({
+                    id: "openseadragon1",
+                    visibilityRatio: 1,
+                    minZoomImageRatio: 1,
+                    prefixUrl: "https://openseadragon.github.io/openseadragon/images/",
+                    imageLoaderLimit: 5,
+                    timeout: 1000000,
+                    crossOriginPolicy: "Anonymous",
+                    tileSources: tileSources
+                });
+                viewer.addHandler('open', () => {
+                    statusEl.textContent = "Image ready - zoom/pan to explore";
+                    statusEl.style.color = "green";
+                });
+                viewer.addHandler('open-failed', (e) => {
+                    statusEl.textContent = "Failed to open: " + e.message;
+                    console.error(e);
+                });
+                setTimeout(() => { if (statusEl.textContent.includes("Rendering")) statusEl.style.display = "none"; }, 5000);
+            } catch (e) {
+                statusEl.textContent = "Error loading SVS: " + e.message;
+                console.error(e);
+                alert("Error loading SVS: " + e.message + "\n\nCheck browser console (F12) and ensure server supports HTTP Range requests.\nTry alternative: python viewer (see console).");
+            }
+        }
+        // Delay slightly to let module script execute
+        setTimeout(init, 800);
+    </script>
+</body>
+</html>
