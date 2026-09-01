@@ -65,8 +65,6 @@
         #save-section button:hover { background: #ddf; }
         #btn-exit-panel { display: none; background: #fdd !important; border-color: #c66 !important; }
         body.viewport-fullscreen #btn-exit-panel { display: inline-block; }
-        #btn-exit { display: none; background: #fdd !important; border-color: #c66 !important; }
-        body.viewport-fullscreen #btn-exit { display: inline-block; }
         #status { color: red; margin: 10px 0; }
         code { color: green; font-style: italic; }
         #container { display: flex; flex-direction: row; gap: 20px; align-items: flex-start; justify-content: flex-start; }
@@ -342,7 +340,6 @@
                 viewer.addHandler('animation-finish', ()=>highlightLevel(viewer));
                 viewer.addHandler('open-failed', e=>{ statusEl.textContent="Failed: "+e.message; metaStatusEl.textContent="failed"; });
                 viewer.addHandler('full-page', e=>{
-                    // ensure image is centered and fills viewer after entering fullscreen
                     setTimeout(()=>{ try{ viewer.viewport.goHome(true); viewer.viewport.applyConstraints(true); }catch(_){} }, 50);
                 });
                 function updateLive(v){ try{ const z=v.viewport.getZoom(true), b=v.viewport.getBounds(true); document.getElementById('live-zoom').textContent=z.toFixed(3); document.getElementById('live-viewport').textContent=`x:${b.x.toFixed(3)} y:${b.y.toFixed(3)} w:${b.width.toFixed(3)} h:${b.height.toFixed(3)}`; }catch(e){} }
@@ -408,9 +405,9 @@
             initViewer();
             function toggleViewportFullscreen(){
                 const isOn = document.body.classList.toggle('viewport-fullscreen');
-                document.getElementById('btn-full').style.display = isOn ? 'none' : 'inline-block';
-                document.getElementById('shot-hint').style.display = isOn ? 'none' : 'inline';
-                // notify OSD to resize
+                document.getElementById('btn-full').style.display = isOn ? 'none' : 'inline-flex';
+                const hint = document.getElementById('shot-hint');
+                if(hint) hint.style.display = isOn ? 'none' : 'inline';
                 setTimeout(()=>{ if(viewerRef){ try{ viewerRef.viewport.goHome(true); }catch(e){} } }, 100);
             }
             document.getElementById('btn-png').onclick = ()=> takeScreenshot('png');
