@@ -2,9 +2,13 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>SVS Viewer - TCGA-FJ-A871</title>
+    <title>SVS Viewer Pro</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="alternate icon" href="favicon.svg">
     <style>
-        body { color: navy; font-family: sans-serif; margin: 20px; }
+        body { color: navy; font-family: sans-serif; margin: 20px auto; max-width: 1520px; display: flex; flex-direction: column; align-items: center; }
+        body > * { width: 100%; max-width: 1520px; }
+        #container { justify-content: center; }
         h1 { color: brown; margin-bottom: 4px; }
         .openseadragon { width: 1024px; height: 800px; border: 1px solid black; background-color: black; flex-shrink: 0; }
         #status { color: red; margin: 10px 0; }
@@ -18,15 +22,31 @@
         #metadata th { background: #eef; font-weight: 600; }
         #metadata .sub { color: #555; font-size: 12px; }
         #metadata code { font-size: 12px; }
+        #pyramid-table tr.selected { background: #fff3b0; font-weight: 600; }
+        #pyramid-table tr.selected td { border-color: #e0a800; }
+        #shot-bar { margin: 10px 0 8px 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        #shot-bar button { padding: 6px 12px; border: 1px solid #666; border-radius: 4px; background: #eef; cursor: pointer; font-weight: 600; }
+        #shot-bar button:hover { background: #ddf; }
+        #top-bar { display: flex; gap: 12px; align-items: center; margin: 10px 0; flex-wrap: wrap; }
+        #imageSelect { padding: 6px 10px; min-width: 380px; border: 1px solid #666; border-radius: 4px; background: white; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/openseadragon@4.1.1/build/openseadragon/openseadragon.js"></script>
     <script type="module" crossorigin="anonymous" src="https://cdn.jsdelivr.net/gh/episphere/GeoTIFFTileSource-JPEG2k/GeoTIFFTileSource.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/geotiff@2.1.3/dist-browser/geotiff.min.js"></script>
 </head>
 <body>
-    <h1>SVS Viewer <sup style="font-size:small;color:navy">[<a href="https://github.com/episphere/svs" target="_blank">episphere/svs</a>]</sup></h1>
-    <p>File: <code id="filename">TCGA-FJ-A871-01Z-00-DX5.8F79D0A8-5DE6-4159-AA77-61DACB21E867.svs</code> — <code id="filesize">fetching...</code></p>
+    <h1>SVS Viewer Pro <sup style="font-size:small;color:navy">[powered by <a href="https://github.com/episphere/svs" target="_blank">episphere/svs</a>]</sup></h1>
+    <div id="top-bar">
+        <label for="imageSelect"><b>Image:</b></label>
+        <select id="imageSelect"><option>loading...</option></select>
+    </div>
+    <p>File: <code id="filename">—</code> — <code id="filesize">fetching...</code></p>
     <p id="status">Loading image... please wait (large file)</p>
+    <div id="shot-bar">
+        <button id="btn-png" title="Save viewport as PNG (lossless, with metadata footer)">📸 Save PNG</button>
+        <button id="btn-jpg" title="Save viewport as JPG (smaller file)">📸 Save JPG</button>
+        <span class="sub" style="margin-left:8px">Filename &amp; image footer include zoom, dimensions, BST time</span>
+    </div>
     <div id="container">
         <div id="openseadragon1" class="openseadragon"></div>
         <div id="metadata">
@@ -56,50 +76,109 @@
             <table id="live-info">
                 <tr><th>Field</th><th>Value</th></tr>
                 <tr><td>Levels loaded</td><td id="live-levels">—</td></tr>
+                <tr><td>Current level</td><td id="live-current">—</td></tr>
                 <tr><td>Viewport</td><td id="live-viewport">drag/zoom to update</td></tr>
                 <tr><td>Zoom</td><td id="live-zoom">—</td></tr>
             </table>
-            <p class="sub">Tip: scroll to zoom (loads <code>240×240</code> tiles for that region), drag to pan. Check <code>F12 → Network</code> for <code>206</code> tile fetches.</p>
+            <p class="sub">Highlighted row = level currently rendered (based on zoom → required pixels). Scroll to zoom — Level 0 loads <code>240×240</code> tiles for that region.</p>
         </div>
     </div>
     <p style="font-size: small; color: #555;">
-        Viewer uses <code>episphere/svs</code> + OpenSeadragon.GeoTIFFTileSource. Works with any SVS via <code>?file=your.svs</code> query param.
+        SVS Viewer Pro — powered by <a href="https://github.com/episphere/svs" target="_blank">episphere/svs</a> + OpenSeadragon.GeoTIFFTileSource. Works with any SVS in <code>image/</code> via dropdown or <code>?file=image/your.svs</code>.
     </p>
 
     <script type="module">
-        const params = new URLSearchParams(location.search);
-        const fileUrl = params.get('file') || params.get('url') || "./TCGA-FJ-A871-01Z-00-DX5.8F79D0A8-5DE6-4159-AA77-61DACB21E867.svs";
-        document.getElementById('filename').textContent = fileUrl.split('/').pop();
+        let fileUrl = null;
+        let viewerRef = null;
+        let pyramidLevels = [];
         const statusEl = document.getElementById("status");
         const metaStatusEl = document.getElementById("meta-status");
 
-        // file size via HEAD
-        fetch(fileUrl, {method:'HEAD'}).then(r=>{
-            const len = r.headers.get('Content-Length');
-            if(len){
-                const gb = (parseInt(len)/1024/1024/1024).toFixed(2);
-                const mb = (parseInt(len)/1024/1024).toFixed(0);
-                document.getElementById('filesize').textContent = `${gb} GB (${mb} MB)`;
-                document.getElementById('m-filesize').textContent = `${gb} GB`;
+        async function populateDropdown(){
+            const sel = document.getElementById('imageSelect');
+            let files = [];
+            try{
+                const r = await fetch('image/manifest.json');
+                if(r.ok) files = await r.json();
+            }catch(e){}
+            if(!files.length){
+                try{
+                    const html = await (await fetch('image/')).text();
+                    files = [...html.matchAll(/href="([^"]+\.(?:svs|ndpi|tiff|tif))"/gi)].map(m=>decodeURIComponent(m[1]));
+                }catch(e){}
             }
-        }).catch(()=>{});
+            if(!files.length){
+                files = ["TCGA-FJ-A871-01Z-00-DX5.8F79D0A8-5DE6-4159-AA77-61DACB21E867.svs"];
+            }
+            // filter to basenames
+            files = files.map(f=>f.split('/').pop());
+            sel.innerHTML = "";
+            files.forEach(f=>{
+                const opt = document.createElement('option');
+                opt.value = f;
+                opt.textContent = f;
+                sel.appendChild(opt);
+            });
+            const param = new URLSearchParams(location.search).get('file');
+            let initial = param ? param.split('/').pop() : null;
+            if(initial && files.includes(initial)) sel.value = initial;
+            sel.onchange = ()=> switchImage(sel.value);
+            return sel.value;
+        }
+
+        function switchImage(basename){
+            const newUrl = `image/${basename}`;
+            fileUrl = newUrl;
+            document.getElementById('filename').textContent = basename;
+            // update URL without reload
+            const u = new URL(location.href);
+            u.searchParams.set('file', newUrl);
+            history.replaceState(null, '', u.toString());
+            // reset status
+            statusEl.textContent = "Loading image... please wait";
+            statusEl.style.color = "red";
+            metaStatusEl.textContent = "loading...";
+            metaStatusEl.style.color = "";
+            // clear viewer
+            if(viewerRef){ try{ viewerRef.destroy(); }catch(e){} viewerRef=null; }
+            document.getElementById('openseadragon1').innerHTML = "";
+            // reload meta + viewer
+            loadFileInfo();
+            loadMetaDynamic();
+            initViewer();
+        }
+
+        function loadFileInfo(){
+            document.getElementById('filename').textContent = fileUrl.split('/').pop();
+            fetch(fileUrl, {method:'HEAD'}).then(r=>{
+                const len = r.headers.get('Content-Length');
+                if(len){
+                    const gb = (parseInt(len)/1024/1024/1024).toFixed(2);
+                    const mb = (parseInt(len)/1024/1024).toFixed(0);
+                    document.getElementById('filesize').textContent = `${gb} GB (${mb} MB)`;
+                    document.getElementById('m-filesize').textContent = `${gb} GB`;
+                } else {
+                    document.getElementById('filesize').textContent = "—";
+                }
+            }).catch(()=>{ document.getElementById('filesize').textContent="—"; });
+        }
 
         async function loadMetaDynamic() {
+            const pyramidTable = document.getElementById('pyramid-table');
+            const descEl = document.getElementById('meta-desc');
+            pyramidTable.innerHTML = '<tr><th>Level</th><th>Dimensions</th><th>Tile</th><th>Grid</th><th>Tiles</th></tr><tr><td colspan="5" style="text-align:center" class="sub">loading...</td></tr>';
             try {
                 const tiff = await GeoTIFF.fromUrl(fileUrl);
                 const imageCount = await tiff.getImageCount();
-                const pyramidTable = document.getElementById('pyramid-table');
-                const descEl = document.getElementById('meta-desc');
-                let rows = '<tr><th>Level</th><th>Dimensions</th><th>Tile</th><th>Grid</th><th>Tiles</th></tr>';
                 let mpp = null, appMag = null, fullW=null, fullH=null;
-                let thumbW=null, thumbH=null;
+                pyramidLevels = [];
+                let rows = '<tr><th>Level</th><th>Dimensions</th><th>Tile</th><th>Grid</th><th>Tiles</th></tr>';
                 for(let i=0;i<imageCount;i++){
                     const img = await tiff.getImage(i);
                     const w = img.getWidth(), h = img.getHeight();
                     const tw = img.getTileWidth ? img.getTileWidth() : null;
                     const th = img.getTileHeight ? img.getTileHeight() : null;
                     const fd = img.getFileDirectory();
-                    const comp = fd.Compression;
                     const desc = fd.ImageDescription || "";
                     if(i===0){
                         fullW=w; fullH=h;
@@ -109,25 +188,25 @@
                         if(a) appMag=a[1];
                         descEl.textContent = desc.split('|')[0].trim().slice(0,80);
                     }
-                    // detect thumbnail (smallest, not tiled)
+                    const rowId = `pyr-row-${i}`;
                     if(!tw || !th){
-                        thumbW=w; thumbH=h;
-                        rows += `<tr><td>Thumb</td><td>${w} × ${h}</td><td colspan="2" style="text-align:center" class="sub">stripped</td><td>1</td></tr>`;
+                        rows += `<tr id="${rowId}"><td>Thumb</td><td>${w} × ${h}</td><td colspan="2" style="text-align:center" class="sub">stripped</td><td>1</td></tr>`;
+                        pyramidLevels.push({w,h,tw:null,th:null,label:"Thumb",rowId, isThumb:true});
                     } else {
                         const cols = Math.ceil(w/tw), rowsN = Math.ceil(h/th);
                         const tiles = cols*rowsN;
                         const label = i===0 ? "0 (full)" : String(i);
-                        // adjust label for thumb offset
-                        rows += `<tr><td>${label}</td><td>${w} × ${h}</td><td>${tw}×${th}</td><td>${cols}×${rowsN}</td><td>${tiles.toLocaleString()}</td></tr>`;
+                        rows += `<tr id="${rowId}"><td>${label}</td><td>${w} × ${h}</td><td>${tw}×${th}</td><td>${cols}×${rowsN}</td><td>${tiles.toLocaleString()}</td></tr>`;
+                        pyramidLevels.push({w,h,tw,th,label,rowId, isThumb:false});
                     }
                     if(i===0){
                         document.getElementById('m-dims').textContent = `${w} × ${h}`;
-                        document.getElementById('m-uncompressed').textContent = `${((w*h*3)/1024/1024/1024).toFixed(1)} GB (${w*h} px)`;
-                        document.getElementById('m-compression').textContent = `JPEG (259=${comp})`;
+                        document.getElementById('m-uncompressed').textContent = `${((w*h*3)/1024/1024/1024).toFixed(1)} GB`;
+                        document.getElementById('m-compression').textContent = `JPEG (259=${fd.Compression})`;
                     }
                 }
                 pyramidTable.innerHTML = rows;
-                document.getElementById('pyramid-sub').textContent = `${imageCount} IFDs incl. thumbnail — tile counts computed as ceil(W/TileWidth)×ceil(H/TileHeight).`;
+                document.getElementById('pyramid-sub').textContent = `${imageCount} IFDs — tile counts = ceil(W/TileWidth)×ceil(H/TileHeight).`;
                 if(mpp){
                     document.getElementById('m-mpp').textContent = `${mpp} µm/px → ~${(25400/parseFloat(mpp)).toFixed(0)} dpi`;
                     if(fullW && fullH){
@@ -138,12 +217,27 @@
                 document.getElementById('m-appmag').textContent = appMag ? `${appMag}×` : "—";
             } catch(e){
                 console.warn("GeoTIFF meta failed", e);
-                document.getElementById('pyramid-table').innerHTML = '<tr><td colspan="5" class="sub">Failed to parse TIFF tags (see console). Pyramid still renders via GeoTIFFTileSource.</td></tr>';
+                document.getElementById('pyramid-table').innerHTML = '<tr><td colspan="5" class="sub">Failed to parse TIFF tags (see console).</td></tr>';
             }
         }
-        loadMetaDynamic();
 
-        async function init() {
+        function highlightLevel(viewer){
+            if(!viewer || !pyramidLevels.length) return;
+            try{
+                const containerW = viewer.viewport.getContainerSize().x;
+                const bounds = viewer.viewport.getBounds(true);
+                const requiredW = containerW / bounds.width;
+                const tiled = pyramidLevels.filter(l=>!l.isThumb).slice().sort((a,b)=>a.w - b.w);
+                let best = tiled[tiled.length-1];
+                for(const lvl of tiled){ if(lvl.w >= requiredW){ best = lvl; break; } }
+                document.querySelectorAll('#pyramid-table tr').forEach(tr=>tr.classList.remove('selected'));
+                const row = document.getElementById(best.rowId);
+                if(row) row.classList.add('selected');
+                document.getElementById('live-current').textContent = `${best.label} (${best.w}×${best.h})`;
+            }catch(e){}
+        }
+
+        async function initViewer() {
             let retries = 0;
             while (!window.OpenSeadragon || !OpenSeadragon.GeoTIFFTileSource) {
                 if (retries++ > 50) { statusEl.textContent = "Error: GeoTIFFTileSource failed to load."; metaStatusEl.textContent = "failed"; return; }
@@ -167,19 +261,82 @@
                     crossOriginPolicy: "Anonymous",
                     tileSources: tileSources
                 });
+                viewerRef = viewer;
                 viewer.addHandler('open', () => {
                     statusEl.textContent = "Image ready - zoom/pan to explore"; statusEl.style.color="green";
                     metaStatusEl.textContent="ready"; metaStatusEl.style.color="green";
-                    updateLive(viewer);
+                    updateLive(viewer); highlightLevel(viewer);
                 });
-                viewer.addHandler('zoom', ()=>updateLive(viewer));
-                viewer.addHandler('pan', ()=>updateLive(viewer));
+                viewer.addHandler('zoom', ()=>{ updateLive(viewer); highlightLevel(viewer); });
+                viewer.addHandler('pan', ()=>{ updateLive(viewer); highlightLevel(viewer); });
+                viewer.addHandler('animation-finish', ()=>highlightLevel(viewer));
                 viewer.addHandler('open-failed', e=>{ statusEl.textContent="Failed: "+e.message; metaStatusEl.textContent="failed"; });
                 function updateLive(v){ try{ const z=v.viewport.getZoom(true), b=v.viewport.getBounds(true); document.getElementById('live-zoom').textContent=z.toFixed(3); document.getElementById('live-viewport').textContent=`x:${b.x.toFixed(3)} y:${b.y.toFixed(3)} w:${b.width.toFixed(3)} h:${b.height.toFixed(3)}`; }catch(e){} }
                 setTimeout(()=>{ if(statusEl.textContent.includes("Rendering")) statusEl.style.display="none"; },5000);
             } catch(e){ statusEl.textContent="Error: "+e.message; metaStatusEl.textContent="error"; console.error(e); }
         }
-        setTimeout(init, 800);
+
+        function takeScreenshot(format){
+            if(!viewerRef){ alert("Viewer not ready yet"); return; }
+            const srcCanvas = viewerRef.drawer.canvas || document.querySelector('#openseadragon1 canvas');
+            if(!srcCanvas){ alert("Canvas not found — try after image loads"); return; }
+            let w = srcCanvas.width, h = srcCanvas.height;
+            const footerH = 34;
+            const out = document.createElement('canvas');
+            out.width = w; out.height = h + footerH;
+            const ctx = out.getContext('2d');
+            ctx.drawImage(srcCanvas, 0, 0);
+            ctx.fillStyle = 'rgba(0,0,0,0.78)';
+            ctx.fillRect(0, h, w, footerH);
+            ctx.fillStyle = '#fff';
+            ctx.font = '12px monospace';
+            const now = new Date();
+            const tsISO = now.toISOString();
+            const tsDisplay = now.toLocaleString('en-US', { timeZone:'Asia/Dhaka', year:'numeric', month:'short', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true }) + ' BST (UTC+6)';
+            const zoom = viewerRef.viewport.getZoom(true).toFixed(3);
+            const cur = document.getElementById('live-current').textContent || '';
+            const dims = document.getElementById('m-dims').textContent || '';
+            const file = fileUrl.split('/').pop();
+            const line1 = `${file} | ${cur} | Full:${dims} | Zoom:${zoom}`;
+            let t1 = line1;
+            while(ctx.measureText(t1).width > w-16 && t1.length>60) t1 = t1.slice(0, t1.length-10) + "…";
+            ctx.fillText(t1, 8, h + 16);
+            ctx.font = '11px monospace';
+            ctx.fillStyle = '#ddd';
+            const line2 = `${tsDisplay} — Screenshot from SVS Viewer Pro (powered by episphere/svs + OpenSeadragon)`;
+            let t2 = line2;
+            while(ctx.measureText(t2).width > w-16 && t2.length>50) t2 = t2.slice(0, t2.length-10) + "…";
+            ctx.fillText(t2, 8, h + 30);
+            const mime = format==='jpg' ? 'image/jpeg' : 'image/png';
+            const ext = format==='jpg' ? 'jpg' : 'png';
+            const tsFile = tsISO.replace(/[:.]/g,'-');
+            const fname = `${file.replace('.svs','')}_${cur.replace(/[^A-Za-z0-9]+/g,'-')}_zoom${zoom}_${tsFile}.${ext}`;
+            out.toBlob(blob=>{
+                if(!blob){ alert("Screenshot failed — canvas may be tainted (check CORS)"); return; }
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href=url; a.download=fname; a.click();
+                setTimeout(()=>URL.revokeObjectURL(url), 2000);
+            }, mime, 0.92);
+        }
+
+        // init
+        (async()=>{
+            const initial = await populateDropdown();
+            fileUrl = `image/${initial}`;
+            // if URL param overrides, use it
+            const param = new URLSearchParams(location.search).get('file');
+            if(param) fileUrl = param;
+            // sync dropdown
+            const base = fileUrl.split('/').pop();
+            const sel = document.getElementById('imageSelect');
+            if([...sel.options].some(o=>o.value===base)) sel.value = base;
+            loadFileInfo();
+            loadMetaDynamic();
+            initViewer();
+            document.getElementById('btn-png').onclick = ()=> takeScreenshot('png');
+            document.getElementById('btn-jpg').onclick = ()=> takeScreenshot('jpg');
+        })();
     </script>
 </body>
 </html>
