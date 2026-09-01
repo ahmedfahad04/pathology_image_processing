@@ -89,28 +89,32 @@ Aperio Image Library v12.0.15
   - Uncompressed: `141432 * 89585 * 3 ≈ 38 GB`
   - Compressed (JPEG `Q=30`, `Compression:259=7`): `1.1 GB` on disk
   - Physical size: `35.7 mm × 22.6 mm` (`MPP 0.2525 µm/px` → `~3960 dpi`, `40×` magnification)
-  - Stored as `~10k` tiles of `240×240` px (strip `TileWidth/TileLength`)
-- **Pyramid levels** (downsampled copies in same file):
-  - Level 0: `141432 × 89585` (1×)
-  - Level 1: `35358 × 22396` (4×)
-  - Level 2: `8839 × 5599` (16×)
-  - Level 3: `2209 × 1399` (64×, overview)
-- **Thumbnail:** `1024 × 648` (separate `series 1`, for file browsers)
+- **Pyramid levels** (downsampled copies in same file) — all tiled `240×240` px (`TileWidth:322=240`, `TileLength:323=240`, `ImageDescription:270` `(240x240)`):
+
+  | Page | Level | Dimensions (W×H) | Downsample | Tile size | Grid (cols×rows) | Tiles | `tif.series` |
+  |------|-------|------------------|------------|-----------|------------------|-------|--------------|
+  | 0 | 0 (full) | `141432 × 89585` | 1× | `240×240` | `590×374` | `220,660` | `series 0, level 0` |
+  | 2 | 1 | `35358 × 22396` | 4× | `240×240` | `148×94` | `13,912` | `series 0, level 1` |
+  | 3 | 2 | `8839 × 5599` | 16× | `240×240` | `37×24` | `888` | `series 0, level 2` |
+  | 4 | 3 (overview) | `2209 × 1399` | 64× | `240×240` | `10×6` | `60` | `series 0, level 3` |
+  | 1 | thumbnail | `1024 × 648` | — | **not tiled** (`RowsPerStrip:278=16`, stripped JPEG) | — | `1` strip | `series 1, level 0` |
+
+  Total tiled pyramid: `~235,520` JPEG tiles. Other SVS files may use `256×256` or `512×512` — scanner-dependent (`Aperio SS1763` → `240` here).
 - No `XResolution:282`/`YResolution:283` — scale is in `MPP` inside `ImageDescription`.
 
 ### Parts of an SVS (TIFF) file
 
 ```
 [ TIFF Header ]
-[ IFD 0: Level 0 ] → TileOffsets:324, TileByteCounts:325, ImageWidth:256, ImageLength:257, Compression:259, ImageDescription:270
-[ IFD 1: Thumbnail ]
-[ IFD 2: Level 1 ]
-[ IFD 3: Level 2 ]
-[ IFD 4: Level 3 ]
+[ IFD 0: Level 0 ] → 141432×89585, 240×240 tiles, 220660 tiles (TileOffsets:324, TileByteCounts:325)
+[ IFD 1: Thumbnail ] → 1024×648, stripped (RowsPerStrip:278=16), not tiled
+[ IFD 2: Level 1 ] → 35358×22396, 240×240 tiles, 13912 tiles
+[ IFD 3: Level 2 ] → 8839×5599, 240×240 tiles, 888 tiles
+[ IFD 4: Level 3 ] → 2209×1399, 240×240 tiles, 60 tiles
 [ JPEG tile data ........... 1.1 GB ........... ]
 ```
 
-Each `IFD` is a directory describing one image level. Tiles are JPEG-compressed individually so any tile can be decoded alone.
+Each `IFD` is a directory describing one image level. Tiled levels store `TileWidth:322`/`TileLength:323` + `TileOffsets:324`/`TileByteCounts:325`; the thumbnail is stripped. Tiles are JPEG-compressed individually so any tile can be decoded alone. Verify with: `python3 -c "import tifffile; p=tifffile.TiffFile('x.svs').pages[0]; print(p.tags[322].value, p.tags[323].value, len(p.tags[324].value))"`
 
 ---
 

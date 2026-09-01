@@ -5,50 +5,157 @@
     <title>SVS Viewer - TCGA-FJ-A871</title>
     <style>
         body { color: navy; font-family: sans-serif; margin: 20px; }
-        h1 { color: brown; }
-        .openseadragon { width: 1024px; height: 800px; border: 1px solid black; background-color: black; }
+        h1 { color: brown; margin-bottom: 4px; }
+        .openseadragon { width: 1024px; height: 800px; border: 1px solid black; background-color: black; flex-shrink: 0; }
         #status { color: red; margin: 10px 0; }
         code { color: green; font-style: italic; }
+        #container { display: flex; flex-direction: row; gap: 20px; align-items: flex-start; }
+        #metadata { width: 420px; border: 1px solid #999; border-radius: 6px; padding: 12px 16px; background: #f9f9ff; font-size: 13px; line-height: 1.45; }
+        #metadata h2 { margin: 0 0 8px 0; font-size: 16px; color: #3F51B5; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
+        #metadata h3 { margin: 12px 0 6px 0; font-size: 13px; color: #b23; }
+        #metadata table { width: 100%; border-collapse: collapse; margin: 6px 0; }
+        #metadata td, #metadata th { border: 1px solid #ccc; padding: 4px 6px; text-align: left; }
+        #metadata th { background: #eef; font-weight: 600; }
+        #metadata .sub { color: #555; font-size: 12px; }
+        #metadata code { font-size: 12px; }
     </style>
-    <!-- OpenSeadragon -->
     <script src="https://cdn.jsdelivr.net/npm/openseadragon@4.1.1/build/openseadragon/openseadragon.js"></script>
-    <!-- GeoTIFFTileSource with JPEG2000 support (same as episphere/svs) -->
     <script type="module" crossorigin="anonymous" src="https://cdn.jsdelivr.net/gh/episphere/GeoTIFFTileSource-JPEG2k/GeoTIFFTileSource.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/geotiff@2.1.3/dist-browser/geotiff.min.js"></script>
 </head>
 <body>
     <h1>SVS Viewer <sup style="font-size:small;color:navy">[<a href="https://github.com/episphere/svs" target="_blank">episphere/svs</a>]</sup></h1>
-    <p>File: <code>TCGA-FJ-A871-01Z-00-DX5.8F79D0A8-5DE6-4159-AA77-61DACB21E867.svs</code> (1.1GB)</p>
+    <p>File: <code id="filename">TCGA-FJ-A871-01Z-00-DX5.8F79D0A8-5DE6-4159-AA77-61DACB21E867.svs</code> — <code id="filesize">fetching...</code></p>
     <p id="status">Loading image... please wait (large file)</p>
-    <div id="openseadragon1" class="openseadragon"></div>
+    <div id="container">
+        <div id="openseadragon1" class="openseadragon"></div>
+        <div id="metadata">
+            <h2>Image Metadata</h2>
+            <p class="sub"><span id="meta-desc">Aperio</span> &middot; <span id="meta-status">loading...</span></p>
+
+            <h3>File &amp; Physical</h3>
+            <table>
+                <tr><th>Field</th><th>Value</th></tr>
+                <tr title="Compressed size on disk — JPEG tiles stored in the SVS file. This is what you download/store (1.1 GB here)."><td>File size</td><td id="m-filesize">—</td></tr>
+                <tr title="Pixel dimensions of the highest-resolution level (Level 0). Width × height in pixels — e.g., 141k×89k = 12.7 gigapixels."><td>Dimensions (full)</td><td id="m-dims">—</td></tr>
+                <tr title="Raw size if every pixel were decoded to RGB (width × height × 3 bytes). You’d need this much RAM to open the full image at once — that’s why we use tiles."><td>Uncompressed</td><td id="m-uncompressed">—</td></tr>
+                <tr title="TIFF tag Compression (259): 7 = JPEG. Each 240×240 tile is a separate JPEG (quality Q=30) so any tile can be fetched/decoded alone."><td>Compression</td><td id="m-compression">—</td></tr>
+                <tr title="Microns Per Pixel — physical scale from ImageDescription. Smaller = higher resolution. 0.25 µm/px ≈ 40× magnification, ~3960 dpi."><td>MPP</td><td id="m-mpp">—</td></tr>
+                <tr title="Apparent magnification of the scanner objective that captured the slide (e.g., 20×, 40×). Determines MPP."><td>AppMag</td><td id="m-appmag">—</td></tr>
+                <tr title="Real-world size of the imaged tissue area on glass: width×MPP by height×MPP, in millimeters."><td>Physical size</td><td id="m-physical">—</td></tr>
+            </table>
+
+            <h3>Pyramid Levels</h3>
+            <table id="pyramid-table">
+                <tr><th>Level</th><th>Dimensions</th><th>Tile</th><th>Grid</th><th>Tiles</th></tr>
+                <tr><td colspan="5" style="text-align:center" class="sub">loading...</td></tr>
+            </table>
+            <p class="sub" id="pyramid-sub"></p>
+
+            <h3>Live Viewer Info</h3>
+            <table id="live-info">
+                <tr><th>Field</th><th>Value</th></tr>
+                <tr><td>Levels loaded</td><td id="live-levels">—</td></tr>
+                <tr><td>Viewport</td><td id="live-viewport">drag/zoom to update</td></tr>
+                <tr><td>Zoom</td><td id="live-zoom">—</td></tr>
+            </table>
+            <p class="sub">Tip: scroll to zoom (loads <code>240×240</code> tiles for that region), drag to pan. Check <code>F12 → Network</code> for <code>206</code> tile fetches.</p>
+        </div>
+    </div>
     <p style="font-size: small; color: #555;">
-        Viewer uses <code>episphere/svs</code> + OpenSeadragon.GeoTIFFTileSource (same as <a href="https://episphere.github.io/svs">https://episphere.github.io/svs</a>).<br>
-        Use mouse wheel to zoom, drag to pan. If loading hangs, hard-refresh (Ctrl+Shift+R) or check browser console (F12).
+        Viewer uses <code>episphere/svs</code> + OpenSeadragon.GeoTIFFTileSource. Works with any SVS via <code>?file=your.svs</code> query param.
     </p>
 
     <script type="module">
-        // Wait for OpenSeadragon and GeoTIFFTileSource to load
-        const fileUrl = "./TCGA-FJ-A871-01Z-00-DX5.8F79D0A8-5DE6-4159-AA77-61DACB21E867.svs";
+        const params = new URLSearchParams(location.search);
+        const fileUrl = params.get('file') || params.get('url') || "./TCGA-FJ-A871-01Z-00-DX5.8F79D0A8-5DE6-4159-AA77-61DACB21E867.svs";
+        document.getElementById('filename').textContent = fileUrl.split('/').pop();
         const statusEl = document.getElementById("status");
+        const metaStatusEl = document.getElementById("meta-status");
+
+        // file size via HEAD
+        fetch(fileUrl, {method:'HEAD'}).then(r=>{
+            const len = r.headers.get('Content-Length');
+            if(len){
+                const gb = (parseInt(len)/1024/1024/1024).toFixed(2);
+                const mb = (parseInt(len)/1024/1024).toFixed(0);
+                document.getElementById('filesize').textContent = `${gb} GB (${mb} MB)`;
+                document.getElementById('m-filesize').textContent = `${gb} GB`;
+            }
+        }).catch(()=>{});
+
+        async function loadMetaDynamic() {
+            try {
+                const tiff = await GeoTIFF.fromUrl(fileUrl);
+                const imageCount = await tiff.getImageCount();
+                const pyramidTable = document.getElementById('pyramid-table');
+                const descEl = document.getElementById('meta-desc');
+                let rows = '<tr><th>Level</th><th>Dimensions</th><th>Tile</th><th>Grid</th><th>Tiles</th></tr>';
+                let mpp = null, appMag = null, fullW=null, fullH=null;
+                let thumbW=null, thumbH=null;
+                for(let i=0;i<imageCount;i++){
+                    const img = await tiff.getImage(i);
+                    const w = img.getWidth(), h = img.getHeight();
+                    const tw = img.getTileWidth ? img.getTileWidth() : null;
+                    const th = img.getTileHeight ? img.getTileHeight() : null;
+                    const fd = img.getFileDirectory();
+                    const comp = fd.Compression;
+                    const desc = fd.ImageDescription || "";
+                    if(i===0){
+                        fullW=w; fullH=h;
+                        const m = desc.match(/MPP\s*=\s*([0-9.]+)/);
+                        if(m) mpp=m[1];
+                        const a = desc.match(/AppMag\s*=\s*([0-9.]+)/);
+                        if(a) appMag=a[1];
+                        descEl.textContent = desc.split('|')[0].trim().slice(0,80);
+                    }
+                    // detect thumbnail (smallest, not tiled)
+                    if(!tw || !th){
+                        thumbW=w; thumbH=h;
+                        rows += `<tr><td>Thumb</td><td>${w} × ${h}</td><td colspan="2" style="text-align:center" class="sub">stripped</td><td>1</td></tr>`;
+                    } else {
+                        const cols = Math.ceil(w/tw), rowsN = Math.ceil(h/th);
+                        const tiles = cols*rowsN;
+                        const label = i===0 ? "0 (full)" : String(i);
+                        // adjust label for thumb offset
+                        rows += `<tr><td>${label}</td><td>${w} × ${h}</td><td>${tw}×${th}</td><td>${cols}×${rowsN}</td><td>${tiles.toLocaleString()}</td></tr>`;
+                    }
+                    if(i===0){
+                        document.getElementById('m-dims').textContent = `${w} × ${h}`;
+                        document.getElementById('m-uncompressed').textContent = `${((w*h*3)/1024/1024/1024).toFixed(1)} GB (${w*h} px)`;
+                        document.getElementById('m-compression').textContent = `JPEG (259=${comp})`;
+                    }
+                }
+                pyramidTable.innerHTML = rows;
+                document.getElementById('pyramid-sub').textContent = `${imageCount} IFDs incl. thumbnail — tile counts computed as ceil(W/TileWidth)×ceil(H/TileHeight).`;
+                if(mpp){
+                    document.getElementById('m-mpp').textContent = `${mpp} µm/px → ~${(25400/parseFloat(mpp)).toFixed(0)} dpi`;
+                    if(fullW && fullH){
+                        const physW = (fullW*parseFloat(mpp)/1000).toFixed(1), physH=(fullH*parseFloat(mpp)/1000).toFixed(1);
+                        document.getElementById('m-physical').textContent = `${physW} × ${physH} mm`;
+                    }
+                } else document.getElementById('m-mpp').textContent = "—";
+                document.getElementById('m-appmag').textContent = appMag ? `${appMag}×` : "—";
+            } catch(e){
+                console.warn("GeoTIFF meta failed", e);
+                document.getElementById('pyramid-table').innerHTML = '<tr><td colspan="5" class="sub">Failed to parse TIFF tags (see console). Pyramid still renders via GeoTIFFTileSource.</td></tr>';
+            }
+        }
+        loadMetaDynamic();
 
         async function init() {
-            // GeoTIFFTileSource is loaded as ES module side-effect, it registers onto OpenSeadragon
-            // Poll until available (module loads async)
             let retries = 0;
             while (!window.OpenSeadragon || !OpenSeadragon.GeoTIFFTileSource) {
-                if (retries++ > 50) {
-                    statusEl.textContent = "Error: GeoTIFFTileSource failed to load. Check network / CDN.";
-                    console.error("GeoTIFFTileSource not found after 5s");
-                    return;
-                }
+                if (retries++ > 50) { statusEl.textContent = "Error: GeoTIFFTileSource failed to load."; metaStatusEl.textContent = "failed"; return; }
                 await new Promise(r => setTimeout(r, 100));
             }
             statusEl.textContent = "Fetching SVS (Range requests)...";
-            console.log("Loading", fileUrl);
+            metaStatusEl.textContent = "fetching header...";
             try {
-                // getAllTileSources fetches header + tiles via HTTP Range requests
                 const tileSources = await OpenSeadragon.GeoTIFFTileSource.getAllTileSources(fileUrl, { logLatency: false, cache: true, slideOnly: true });
-                console.log("tileSources", tileSources);
                 statusEl.textContent = `Loaded ${tileSources.length} level(s). Rendering...`;
+                metaStatusEl.textContent = `header ok — ${tileSources.length} levels`;
+                document.getElementById('live-levels').textContent = tileSources.length;
                 document.getElementById("openseadragon1").innerHTML = "";
                 const viewer = OpenSeadragon({
                     id: "openseadragon1",
@@ -61,21 +168,17 @@
                     tileSources: tileSources
                 });
                 viewer.addHandler('open', () => {
-                    statusEl.textContent = "Image ready - zoom/pan to explore";
-                    statusEl.style.color = "green";
+                    statusEl.textContent = "Image ready - zoom/pan to explore"; statusEl.style.color="green";
+                    metaStatusEl.textContent="ready"; metaStatusEl.style.color="green";
+                    updateLive(viewer);
                 });
-                viewer.addHandler('open-failed', (e) => {
-                    statusEl.textContent = "Failed to open: " + e.message;
-                    console.error(e);
-                });
-                setTimeout(() => { if (statusEl.textContent.includes("Rendering")) statusEl.style.display = "none"; }, 5000);
-            } catch (e) {
-                statusEl.textContent = "Error loading SVS: " + e.message;
-                console.error(e);
-                alert("Error loading SVS: " + e.message + "\n\nCheck browser console (F12) and ensure server supports HTTP Range requests.\nTry alternative: python viewer (see console).");
-            }
+                viewer.addHandler('zoom', ()=>updateLive(viewer));
+                viewer.addHandler('pan', ()=>updateLive(viewer));
+                viewer.addHandler('open-failed', e=>{ statusEl.textContent="Failed: "+e.message; metaStatusEl.textContent="failed"; });
+                function updateLive(v){ try{ const z=v.viewport.getZoom(true), b=v.viewport.getBounds(true); document.getElementById('live-zoom').textContent=z.toFixed(3); document.getElementById('live-viewport').textContent=`x:${b.x.toFixed(3)} y:${b.y.toFixed(3)} w:${b.width.toFixed(3)} h:${b.height.toFixed(3)}`; }catch(e){} }
+                setTimeout(()=>{ if(statusEl.textContent.includes("Rendering")) statusEl.style.display="none"; },5000);
+            } catch(e){ statusEl.textContent="Error: "+e.message; metaStatusEl.textContent="error"; console.error(e); }
         }
-        // Delay slightly to let module script execute
         setTimeout(init, 800);
     </script>
 </body>
