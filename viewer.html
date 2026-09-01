@@ -5,15 +5,71 @@
     <title>SVS Viewer Pro</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="alternate icon" href="favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { color: navy; font-family: sans-serif; margin: 20px auto; max-width: 1520px; display: flex; flex-direction: column; align-items: center; }
-        body > * { width: 100%; max-width: 1520px; }
-        #container { justify-content: center; }
+        body { color: navy; font-family: 'Open Sans', sans-serif; margin: 20px auto; max-width: 1520px; display: flex; flex-direction: column; align-items: center; }
+        body > * { width: 100%; max-width: 1520px; box-sizing: border-box; }
         h1 { color: brown; margin-bottom: 4px; }
         .openseadragon { width: 1024px; height: 800px; border: 1px solid black; background-color: black; flex-shrink: 0; }
+        /* ensure OSD fullPage covers entire viewport, not just 1024px (OSD uses .fullpage, not .openseadragon-fullpage) */
+        #openseadragon1.fullpage,
+        #openseadragon1.openseadragon-fullpage,
+        .openseadragon.fullpage,
+        #openseadragon1:-webkit-full-screen,
+        #openseadragon1:-moz-full-screen,
+        #openseadragon1:fullscreen,
+        .openseadragon:fullscreen {
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: 100vw !important;
+            max-height: 100vh !important;
+            border: none !important;
+            left: 0 !important;
+            top: 0 !important;
+            margin: 0 !important;
+            position: fixed !important;
+        }
+        body.fullpage, html.fullpage, body.openseadragon-fullpage, html.openseadragon-fullpage { overflow: hidden; }
+        /* viewport-fill mode (keeps save buttons) */
+        body.viewport-fullscreen { overflow: hidden; }
+        body.viewport-fullscreen #top-bar,
+        body.viewport-fullscreen > p:not(#status) { display: none; }
+        body.viewport-fullscreen #status { display: none !important; }
+        body.viewport-fullscreen #container {
+            position: fixed !important;
+            inset: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: 100vw !important;
+            background: white;
+            z-index: 9999;
+            padding: 10px;
+            gap: 10px;
+            box-sizing: border-box;
+        }
+        body.viewport-fullscreen #openseadragon1 {
+            width: calc(100vw - 440px - 30px) !important;
+            height: calc(100vh - 20px) !important;
+            border: none !important;
+        }
+        body.viewport-fullscreen #metadata {
+            height: calc(100vh - 20px);
+            overflow-y: auto;
+        }
+        /* in viewport-fullscreen hide outer bar, use inner Save Image section */
+        body.viewport-fullscreen #shot-bar { display: none !important; }
+        #save-section { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0; }
+        #save-section button { flex: 1; min-width: 90px; padding: 6px 8px; border: 1px solid #666; border-radius: 4px; background: #eef; cursor: pointer; font-weight: 600; font-family: 'Open Sans', sans-serif; }
+        #save-section button:hover { background: #ddf; }
+        #btn-exit-panel { display: none; background: #fdd !important; border-color: #c66 !important; }
+        body.viewport-fullscreen #btn-exit-panel { display: inline-block; }
+        #btn-exit { display: none; background: #fdd !important; border-color: #c66 !important; }
+        body.viewport-fullscreen #btn-exit { display: inline-block; }
         #status { color: red; margin: 10px 0; }
         code { color: green; font-style: italic; }
-        #container { display: flex; flex-direction: row; gap: 20px; align-items: flex-start; }
+        #container { display: flex; flex-direction: row; gap: 20px; align-items: flex-start; justify-content: flex-start; }
         #metadata { width: 420px; border: 1px solid #999; border-radius: 6px; padding: 12px 16px; background: #f9f9ff; font-size: 13px; line-height: 1.45; }
         #metadata h2 { margin: 0 0 8px 0; font-size: 16px; color: #3F51B5; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
         #metadata h3 { margin: 12px 0 6px 0; font-size: 13px; color: #b23; }
@@ -28,7 +84,8 @@
         #shot-bar button { padding: 6px 12px; border: 1px solid #666; border-radius: 4px; background: #eef; cursor: pointer; font-weight: 600; }
         #shot-bar button:hover { background: #ddf; }
         #top-bar { display: flex; gap: 12px; align-items: center; margin: 10px 0; flex-wrap: wrap; }
-        #imageSelect { padding: 6px 10px; min-width: 380px; border: 1px solid #666; border-radius: 4px; background: white; }
+        #imageSelect { padding: 6px 10px; min-width: 380px; border: 1px solid #666; border-radius: 4px; background: white; font-family: 'Open Sans', sans-serif; }
+        #shot-bar button, #save-section button { font-family: 'Open Sans', sans-serif; display: inline-flex; align-items: center; gap: 6px; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/openseadragon@4.1.1/build/openseadragon/openseadragon.js"></script>
     <script type="module" crossorigin="anonymous" src="https://cdn.jsdelivr.net/gh/episphere/GeoTIFFTileSource-JPEG2k/GeoTIFFTileSource.js"></script>
@@ -43,15 +100,25 @@
     <p>File: <code id="filename">—</code> — <code id="filesize">fetching...</code></p>
     <p id="status">Loading image... please wait (large file)</p>
     <div id="shot-bar">
-        <button id="btn-png" title="Save viewport as PNG (lossless, with metadata footer)">📸 Save PNG</button>
-        <button id="btn-jpg" title="Save viewport as JPG (smaller file)">📸 Save JPG</button>
-        <span class="sub" style="margin-left:8px">Filename &amp; image footer include zoom, dimensions, BST time</span>
+        <button id="btn-full" title="Fill viewport (keeps metadata, ESC to exit)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+            View Full Screen
+        </button>
+        <span class="sub" id="shot-hint" style="margin-left:8px">Scroll to zoom, double-click to zoom, drag to pan</span>
     </div>
     <div id="container">
         <div id="openseadragon1" class="openseadragon"></div>
         <div id="metadata">
             <h2>Image Metadata</h2>
             <p class="sub"><span id="meta-desc">Aperio</span> &middot; <span id="meta-status">loading...</span></p>
+
+            <h3>Save Image</h3>
+            <div id="save-section">
+                <button id="btn-png" title="Save viewport as PNG (lossless, with BST footer)">📸 Save PNG</button>
+                <button id="btn-jpg" title="Save viewport as JPG (smaller file)">📸 Save JPG</button>
+                <button id="btn-exit-panel" title="Exit viewport fullscreen">✕ Exit Fullscreen</button>
+            </div>
+            <p class="sub">Saves current viewport at displayed resolution with file name, level, zoom & BST timestamp footer.</p>
 
             <h3>File &amp; Physical</h3>
             <table>
@@ -110,7 +177,6 @@
             if(!files.length){
                 files = ["TCGA-FJ-A871-01Z-00-DX5.8F79D0A8-5DE6-4159-AA77-61DACB21E867.svs"];
             }
-            // filter to basenames
             files = files.map(f=>f.split('/').pop());
             sel.innerHTML = "";
             files.forEach(f=>{
@@ -130,19 +196,15 @@
             const newUrl = `image/${basename}`;
             fileUrl = newUrl;
             document.getElementById('filename').textContent = basename;
-            // update URL without reload
             const u = new URL(location.href);
             u.searchParams.set('file', newUrl);
             history.replaceState(null, '', u.toString());
-            // reset status
             statusEl.textContent = "Loading image... please wait";
             statusEl.style.color = "red";
             metaStatusEl.textContent = "loading...";
             metaStatusEl.style.color = "";
-            // clear viewer
             if(viewerRef){ try{ viewerRef.destroy(); }catch(e){} viewerRef=null; }
             document.getElementById('openseadragon1').innerHTML = "";
-            // reload meta + viewer
             loadFileInfo();
             loadMetaDynamic();
             initViewer();
@@ -253,8 +315,16 @@
                 document.getElementById("openseadragon1").innerHTML = "";
                 const viewer = OpenSeadragon({
                     id: "openseadragon1",
-                    visibilityRatio: 1,
-                    minZoomImageRatio: 1,
+                    visibilityRatio: 1.0,
+                    minZoomImageRatio: 0.3,
+                    maxZoomPixelRatio: 10,
+                    homeFillsViewer: true,
+                    showNavigationControl: true,
+                    showFullPageControl: true,
+                    showZoomControl: true,
+                    showHomeControl: true,
+                    gestureSettingsMouse: { scrollToZoom: true, clickToZoom: true, dblClickToZoom: true },
+                    gestureSettingsTouch: { pinchToZoom: true },
                     prefixUrl: "https://openseadragon.github.io/openseadragon/images/",
                     imageLoaderLimit: 5,
                     timeout: 1000000,
@@ -271,6 +341,10 @@
                 viewer.addHandler('pan', ()=>{ updateLive(viewer); highlightLevel(viewer); });
                 viewer.addHandler('animation-finish', ()=>highlightLevel(viewer));
                 viewer.addHandler('open-failed', e=>{ statusEl.textContent="Failed: "+e.message; metaStatusEl.textContent="failed"; });
+                viewer.addHandler('full-page', e=>{
+                    // ensure image is centered and fills viewer after entering fullscreen
+                    setTimeout(()=>{ try{ viewer.viewport.goHome(true); viewer.viewport.applyConstraints(true); }catch(_){} }, 50);
+                });
                 function updateLive(v){ try{ const z=v.viewport.getZoom(true), b=v.viewport.getBounds(true); document.getElementById('live-zoom').textContent=z.toFixed(3); document.getElementById('live-viewport').textContent=`x:${b.x.toFixed(3)} y:${b.y.toFixed(3)} w:${b.width.toFixed(3)} h:${b.height.toFixed(3)}`; }catch(e){} }
                 setTimeout(()=>{ if(statusEl.textContent.includes("Rendering")) statusEl.style.display="none"; },5000);
             } catch(e){ statusEl.textContent="Error: "+e.message; metaStatusEl.textContent="error"; console.error(e); }
@@ -289,7 +363,7 @@
             ctx.fillStyle = 'rgba(0,0,0,0.78)';
             ctx.fillRect(0, h, w, footerH);
             ctx.fillStyle = '#fff';
-            ctx.font = '12px monospace';
+            ctx.font = '12px Open Sans, sans-serif';
             const now = new Date();
             const tsISO = now.toISOString();
             const tsDisplay = now.toLocaleString('en-US', { timeZone:'Asia/Dhaka', year:'numeric', month:'short', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true }) + ' BST (UTC+6)';
@@ -301,7 +375,7 @@
             let t1 = line1;
             while(ctx.measureText(t1).width > w-16 && t1.length>60) t1 = t1.slice(0, t1.length-10) + "…";
             ctx.fillText(t1, 8, h + 16);
-            ctx.font = '11px monospace';
+            ctx.font = '11px Open Sans, sans-serif';
             ctx.fillStyle = '#ddd';
             const line2 = `${tsDisplay} — Screenshot from SVS Viewer Pro (powered by episphere/svs + OpenSeadragon)`;
             let t2 = line2;
@@ -324,18 +398,27 @@
         (async()=>{
             const initial = await populateDropdown();
             fileUrl = `image/${initial}`;
-            // if URL param overrides, use it
             const param = new URLSearchParams(location.search).get('file');
             if(param) fileUrl = param;
-            // sync dropdown
             const base = fileUrl.split('/').pop();
             const sel = document.getElementById('imageSelect');
             if([...sel.options].some(o=>o.value===base)) sel.value = base;
             loadFileInfo();
             loadMetaDynamic();
             initViewer();
+            function toggleViewportFullscreen(){
+                const isOn = document.body.classList.toggle('viewport-fullscreen');
+                document.getElementById('btn-full').style.display = isOn ? 'none' : 'inline-block';
+                document.getElementById('shot-hint').style.display = isOn ? 'none' : 'inline';
+                // notify OSD to resize
+                setTimeout(()=>{ if(viewerRef){ try{ viewerRef.viewport.goHome(true); }catch(e){} } }, 100);
+            }
             document.getElementById('btn-png').onclick = ()=> takeScreenshot('png');
             document.getElementById('btn-jpg').onclick = ()=> takeScreenshot('jpg');
+            const exitBtn = document.getElementById('btn-exit-panel');
+            if(exitBtn) exitBtn.onclick = toggleViewportFullscreen;
+            document.getElementById('btn-full').onclick = toggleViewportFullscreen;
+            document.addEventListener('keydown', e=>{ if(e.key==='Escape' && document.body.classList.contains('viewport-fullscreen')) toggleViewportFullscreen(); });
         })();
     </script>
 </body>
