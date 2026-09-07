@@ -64,12 +64,12 @@ python3 -m RangeHTTPServer 8000
 
 ## 2. What Files Are Involved
 
-| File | Purpose |
-|------|---------|
-| `viewer.html` | Local viewer — loads `./TCGA-...svs` via `OpenSeadragon.GeoTIFFTileSource.getAllTileSources(fileUrl)` |
-| `TCGA-...svs` | Your local slide (`1.1 GB` compressed, `38 GB` uncompressed) |
-| `/tmp/svs/index.html` | Original `episphere/svs` demo — loads **cloud** images from `https://storage.googleapis.com/imagebox_test` (`svs.js:26`) + `mapping.json` |
-| `thumbnail.jpg` | Extracted `1024×648` preview (generated via `tifffile`) |
+| File                    | Purpose                                                                                                                                                 |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `viewer.html`         | Local viewer — loads`./TCGA-...svs` via `OpenSeadragon.GeoTIFFTileSource.getAllTileSources(fileUrl)`                                               |
+| `TCGA-...svs`         | Your local slide (`1.1 GB` compressed, `38 GB` uncompressed)                                                                                        |
+| `/tmp/svs/index.html` | Original`episphere/svs` demo — loads **cloud** images from `https://storage.googleapis.com/imagebox_test` (`svs.js:26`) + `mapping.json` |
+| `thumbnail.jpg`       | Extracted`1024×648` preview (generated via `tifffile`)                                                                                             |
 
 > `viewer.html` = local. `episphere/svs` demo = cloud. They share the same `OpenSeadragon` + `GeoTIFFTileSource` logic (`svs.js:171-182`).
 
@@ -86,18 +86,19 @@ Aperio Image Library v12.0.15
 ```
 
 - **Full resolution (Level 0):** `141432 × 89585 × 3` px = `12.7 gigapixels`
+
   - Uncompressed: `141432 * 89585 * 3 ≈ 38 GB`
   - Compressed (JPEG `Q=30`, `Compression:259=7`): `1.1 GB` on disk
   - Physical size: `35.7 mm × 22.6 mm` (`MPP 0.2525 µm/px` → `~3960 dpi`, `40×` magnification)
 - **Pyramid levels** (downsampled copies in same file) — all tiled `240×240` px (`TileWidth:322=240`, `TileLength:323=240`, `ImageDescription:270` `(240x240)`):
 
-  | Page | Level | Dimensions (W×H) | Downsample | Tile size | Grid (cols×rows) | Tiles | `tif.series` |
-  |------|-------|------------------|------------|-----------|------------------|-------|--------------|
-  | 0 | 0 (full) | `141432 × 89585` | 1× | `240×240` | `590×374` | `220,660` | `series 0, level 0` |
-  | 2 | 1 | `35358 × 22396` | 4× | `240×240` | `148×94` | `13,912` | `series 0, level 1` |
-  | 3 | 2 | `8839 × 5599` | 16× | `240×240` | `37×24` | `888` | `series 0, level 2` |
-  | 4 | 3 (overview) | `2209 × 1399` | 64× | `240×240` | `10×6` | `60` | `series 0, level 3` |
-  | 1 | thumbnail | `1024 × 648` | — | **not tiled** (`RowsPerStrip:278=16`, stripped JPEG) | — | `1` strip | `series 1, level 0` |
+  | Page | Level        | Dimensions (W×H)   | Downsample | Tile size                                                    | Grid (cols×rows) | Tiles       | `tif.series`        |
+  | ---- | ------------ | ------------------- | ---------- | ------------------------------------------------------------ | ----------------- | ----------- | --------------------- |
+  | 0    | 0 (full)     | `141432 × 89585` | 1×        | `240×240`                                                 | `590×374`      | `220,660` | `series 0, level 0` |
+  | 2    | 1            | `35358 × 22396`  | 4×        | `240×240`                                                 | `148×94`       | `13,912`  | `series 0, level 1` |
+  | 3    | 2            | `8839 × 5599`    | 16×       | `240×240`                                                 | `37×24`        | `888`     | `series 0, level 2` |
+  | 4    | 3 (overview) | `2209 × 1399`    | 64×       | `240×240`                                                 | `10×6`         | `60`      | `series 0, level 3` |
+  | 1    | thumbnail    | `1024 × 648`     | —         | **not tiled** (`RowsPerStrip:278=16`, stripped JPEG) | —                | `1` strip | `series 1, level 0` |
 
   Total tiled pyramid: `~235,520` JPEG tiles. Other SVS files may use `256×256` or `512×512` — scanner-dependent (`Aperio SS1763` → `240` here).
 - No `XResolution:282`/`YResolution:283` — scale is in `MPP` inside `ImageDescription`.
@@ -125,9 +126,11 @@ Think **Google Maps** for pathology.
 1. **Parse header only:** Browser does `Range: bytes=0-16383` → reads TIFF header + IFDs, learns where every tile lives. No pixels yet.
 2. **Show overview:** Render Level 3 (`2209×1399`) — entire slide fits screen, `<5 MB` RAM.
 3. **On zoom/pan:** Compute viewport → request **only visible tiles** at needed level:
+
    ```
    GET /TCGA-...svs  Range: bytes=1048576-1123456 → 206 Partial Content (~50 KB)
    ```
+
    Decode that one `240×240` JPEG tile → draw. A typical view = `10-20` tiles (`2-5 MB` RAM).
 4. **Never loads full `141k×89k` bitmap.** That would be `38 GB`.
 
@@ -167,12 +170,12 @@ with tifffile.TiffFile('TCGA-...svs') as tif:
 
 ## 6. Troubleshooting
 
-| Problem | Fix |
-|---------|-----|
-| `curl Range` returns `200` + `1.1 GB` | You're using `http.server` — switch to `RangeHTTPServer` |
-| Black viewer / `GeoTIFFTileSource not found` | Wait 2s, hard-refresh `Ctrl+Shift+R`, check CDN online |
-| `Address already in use` | `ss -tlnp \| grep 8765` → `kill <PID>` or use `8766` |
-| `imagecodecs` error on thumbnail | `pip install imagecodecs` |
+| Problem                                       | Fix                                                          |
+| --------------------------------------------- | ------------------------------------------------------------ |
+| `curl Range` returns `200` + `1.1 GB`   | You're using`http.server` — switch to `RangeHTTPServer` |
+| Black viewer /`GeoTIFFTileSource not found` | Wait 2s, hard-refresh`Ctrl+Shift+R`, check CDN online      |
+| `Address already in use`                    | `ss -tlnp \| grep 8765` → `kill <PID>` or use `8766`   |
+| `imagecodecs` error on thumbnail            | `pip install imagecodecs`                                  |
 
 ---
 

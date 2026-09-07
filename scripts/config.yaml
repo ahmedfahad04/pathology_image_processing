@@ -1,0 +1,70 @@
+# Preprocessing Pipeline Configuration
+# For H&E Stained Whole Slide Images (WSI)
+
+input:
+  svs_path: "../image/TCGA-FJ-A871-01Z-00-DX5.8F79D0A8-5DE6-4159-AA77-61DACB21E867.svs"
+  level: 0  # Pyramid level (0 = highest resolution)
+
+output:
+  base_dir: "../output/preprocessed"
+  tiles_dir: "tiles"
+  masks_dir: "masks"
+  metadata_dir: "metadata"
+
+patch_extraction:
+  patch_size: 1024         # Size of each patch (pixels)
+  overlap: 128             # Overlap between adjacent patches (pixels)
+  # stride = patch_size - overlap = 896
+  min_tissue_percent: 5.0  # Minimum tissue % to keep a patch
+
+noise_reduction:
+  gaussian_kernel: 3     # Kernel size for Gaussian blur (odd number)
+  median_kernel: 3       # Kernel size for median filter (odd number)
+  morphological_disk: 2  # Disk radius for morphological opening
+  enabled: true
+
+background_removal:
+  method: "otsu"         # "otsu", "adaptive", or "color_based"
+  otsu_threshold: 0      # 0 = auto (cv2.THRESH_OTSU)
+  morphological_disk: 5  # Disk radius for closing holes
+  min_area_percent: 1.0  # Remove objects smaller than this % of tile
+  invert: true           # Invert mask (tissue=white, background=black)
+
+tissue_detection:
+  min_tissue_percent: 5.0   # Minimum % tissue to consider tile valid
+  focus_method: "laplacian" # "laplacian" or "variance"
+  focus_threshold: 50.0     # Minimum focus score (Laplacian variance)
+  check_focus: true         # Whether to check image focus quality
+
+color_normalization:
+  method: "percentile"    # "percentile", "macenko", or "reinhard"
+  percentile_low: 1      # Lower percentile for normalization
+  percentile_high: 99    # Upper percentile for normalization
+  target_mean: 0.5       # Target mean (for reinhard)
+  target_std: 0.25       # Target std (for reinhard)
+  enabled: true
+
+quality_control:
+  save_rejected: false   # Save rejected tiles for inspection
+  generate_report: true  # Generate HTML report
+  thumbnail_size: 256    # Size of thumbnail in report
+
+# Alternative pipeline: direct Macenko normalization (tissue-only by default)
+# Extracts patches -> tissue filter -> saves raw + Macenko-normalized in separate folders
+# Only tissue patches are saved/normalized; background/glass is skipped (no more beta warnings)
+macenko_normalization:
+  Io: 240                # Transmitted light intensity
+  alpha: 1               # Percentile tolerance for stain vectors
+  beta: 0.15             # OD threshold for transparent pixels
+  # HERef and maxCRef use Macenko defaults if not specified
+  filter_tissue: true    # Only process tissue patches (skip background) - set false to keep old behavior
+  min_tissue_percent: 5.0 # Override tissue threshold (default uses tissue_detection.min_tissue_percent)
+
+macenko_output:
+  base_dir: "../output/patches"  # Base for raw + normalized
+  raw_dir: "raw"                 # Subfolder for raw patches
+  normalized_dir: "normalized"   # Subfolder for normalized patches
+  # metadata will be in base_dir/metadata
+  # Usage: python patch_normalization_pipeline.py --max-tiles 10          # 10 tissue patches
+  #        python patch_normalization_pipeline.py --all                   # all ~3235 tissue patches
+  #        python patch_normalization_pipeline.py --no-filter --max-tiles 10  # include background (old, warns)
