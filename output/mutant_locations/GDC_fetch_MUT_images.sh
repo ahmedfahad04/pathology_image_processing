@@ -105,5 +105,5 @@ echo "To fetch TCGA-ZF-A9RG-01A-02-TSB.B2FD6615-0F9B-4BAD-BED6-3850872A9E05.svs:
 # gdc-client: gdc-client download $(grep TCGA-ZF-A9RG-01Z-00-DX1.E9C92201-31AD-4D7E-87C0-64842D705380.svs gdc_manifest.txt | cut -f1)
 echo "To fetch TCGA-ZF-A9RG-01Z-00-DX1.E9C92201-31AD-4D7E-87C0-64842D705380.svs: go to https://portal.gdc.cancer.gov/files and search file_name"
 
-# For bulk: use output/tcga_blca_file_names.txt and scripts/fetch_cbioportal_data.py already does metadata; for SVS binary use GDC API:
+# For bulk: use output/tcga_blca_file_names.txt and scripts/analysis/fetch_cbioportal_data.py already does metadata; for SVS binary use GDC API:
 # curl 'https://api.gdc.cancer.gov/files/<FILE_UUID>/data' -o image/<FILE_NAME>.svs

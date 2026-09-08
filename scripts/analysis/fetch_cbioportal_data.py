@@ -43,30 +43,30 @@ Barcode parsing:
 
 Usage:
   # single image (legacy)
-  python scripts/fetch_cbioportal_data.py --image image/TCGA-FJ-A871-01Z-00-DX5.8F79D0A8-5DE6-4159-AA77-61DACB21E867.svs
+  python scripts/analysis/fetch_cbioportal_data.py --image image/TCGA-FJ-A871-01Z-00-DX5.8F79D0A8-5DE6-4159-AA77-61DACB21E867.svs
 
   # whole folder (legacy)
-  python scripts/fetch_cbioportal_data.py --image-dir image/ --study blca_tcga_pan_can_atlas_2018
+  python scripts/analysis/fetch_cbioportal_data.py --image-dir image/ --study blca_tcga_pan_can_atlas_2018
 
   # NEW: from TSV that lists all images (as discovered at data/tcga_blca_slides.tsv)
   # Step A: create file_names list (already done):
   #   cut -f4 data/tcga_blca_slides.tsv | tail -n +2 > data/tcga_blca_file_names.txt
   # Step B: download per-image folder:
-  python scripts/fetch_cbioportal_data.py --file-list data/tcga_blca_file_names.txt --outdir data
-  python scripts/fetch_cbioportal_data.py --file-list data/tcga_blca_file_names.csv --outdir data --study blca_tcga_pan_can_atlas_2018
-  python scripts/fetch_cbioportal_data.py --file-list data/tcga_blca_slides.tsv --outdir data/per_image --per-image-dir
+  python scripts/analysis/fetch_cbioportal_data.py --file-list data/tcga_blca_file_names.txt --outdir data
+  python scripts/analysis/fetch_cbioportal_data.py --file-list data/tcga_blca_file_names.csv --outdir data --study blca_tcga_pan_can_atlas_2018
+  python scripts/analysis/fetch_cbioportal_data.py --file-list data/tcga_blca_slides.tsv --outdir data/per_image --per-image-dir
 
   # limit to first X files (your request: x = number of files)
-  python scripts/fetch_cbioportal_data.py --file-list data/tcga_blca_file_names.txt --outdir data --limit 10
-  python scripts/fetch_cbioportal_data.py --file-list data/tcga_blca_file_names.txt --limit 5 --batch-size 5
-  python scripts/fetch_cbioportal_data.py --image-dir image/ --limit 3
-  python scripts/fetch_cbioportal_data.py -n 20 --file-list data/tcga_blca_slides.tsv
+  python scripts/analysis/fetch_cbioportal_data.py --file-list data/tcga_blca_file_names.txt --outdir data --limit 10
+  python scripts/analysis/fetch_cbioportal_data.py --file-list data/tcga_blca_file_names.txt --limit 5 --batch-size 5
+  python scripts/analysis/fetch_cbioportal_data.py --image-dir image/ --limit 3
+  python scripts/analysis/fetch_cbioportal_data.py -n 20 --file-list data/tcga_blca_slides.tsv
 
   # custom study / gene
-  python scripts/fetch_cbioportal_data.py --file-list data/tcga_blca_file_names.txt --gene EGFR --entrez 1956
+  python scripts/analysis/fetch_cbioportal_data.py --file-list data/tcga_blca_file_names.txt --gene EGFR --entrez 1956
 
   # autodetect study
-  python scripts/fetch_cbioportal_data.py --file-list data/tcga_blca_file_names.txt --study auto
+  python scripts/analysis/fetch_cbioportal_data.py --file-list data/tcga_blca_file_names.txt --study auto
 
 Dependencies:
   pip install requests

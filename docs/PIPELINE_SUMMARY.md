@@ -10,7 +10,7 @@
 
 | Aspect                 | Pipeline 1: Full Preprocessing                           | Pipeline 2: Direct Macenko Normalization                                                                                                     |
 | ---------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Script                 | `scripts/preprocess_pipeline.py:36`                    | `scripts/patch_normalization_pipeline.py:43` + `scripts/macenko_normalizer.py:20` (refactored from `122_normalizing_HnE_images.py:47`) |
+| Script                 | `scripts/preprocessing/preprocess_pipeline.py:36`                    | `scripts/preprocessing/patch_normalization_pipeline.py:43` + `scripts/preprocessing/macenko_normalizer.py:20` (refactored from `scripts/preprocessing/122_normalizing_HnE_images.py:47`) |
 | Philosophy             | Filter aggressively, keep only high-quality tissue tiles | Extract unbiased, keep everything, normalize stain only                                                                                      |
 | Filtering              | Yes (tissue%, focus, stain)                              | No (all tiles retained)                                                                                                                      |
 | Output size (full WSI) | 3235 / 15800 tiles accepted (~20.5%)                     | 15800 / 15800 tiles (100%, paired)                                                                                                           |
@@ -21,11 +21,11 @@
 
 ### 2.1 Steps
 
-1. **Tile Extraction** `scripts/tile_extractor.py:27` — `patch_size=1024`, `overlap=128`, `stride=896`. Tiled reading via OpenSlide, never loads full 38 GB image. Generates 15800 coordinates.
-2. **Noise Removal** `scripts/noise_remover.py:26` — Gaussian (k=3) → Median (k=3) → Morphological opening (disk=2). Targets Gaussian sensor noise, salt-and-pepper, debris.
-3. **Background Removal** `scripts/background_remover.py:27` — Grayscale Otsu + inversion + closing (disk=5) + remove small objects (<1% tile). Produces binary tissue mask.
-4. **Tissue Detection** `scripts/tissue_detector.py:25` — `min_tissue_percent=5.0`, `focus_method=laplacian` threshold 50.0, HSV stain check. Decision: `is_valid = has_tissue AND is_focused AND is_stained` `scripts/tissue_detector.py:235`.
-5. **Color Normalization** `scripts/color_normalizer.py:30` — `method=percentile` (low=1, high=99) in `config.yaml:39`. Per-channel percentile scaling.
+1. **Tile Extraction** `scripts/preprocessing/tile_extractor.py:27` — `patch_size=1024`, `overlap=128`, `stride=896`. Tiled reading via OpenSlide, never loads full 38 GB image. Generates 15800 coordinates.
+2. **Noise Removal** `scripts/preprocessing/noise_remover.py:26` — Gaussian (k=3) → Median (k=3) → Morphological opening (disk=2). Targets Gaussian sensor noise, salt-and-pepper, debris.
+3. **Background Removal** `scripts/preprocessing/background_remover.py:27` — Grayscale Otsu + inversion + closing (disk=5) + remove small objects (<1% tile). Produces binary tissue mask.
+4. **Tissue Detection** `scripts/preprocessing/tissue_detector.py:25` — `min_tissue_percent=5.0`, `focus_method=laplacian` threshold 50.0, HSV stain check. Decision: `is_valid = has_tissue AND is_focused AND is_stained` `scripts/preprocessing/tissue_detector.py:235`.
+5. **Color Normalization** `scripts/preprocessing/color_normalizer.py:30` — `method=percentile` (low=1, high=99) in `scripts/preprocessing/config.yaml:39`. Per-channel percentile scaling.
 
 ### 2.2 Expected Output
 
@@ -57,10 +57,10 @@ Verified run `output/preprocessed/metadata/processing_stats.json:1` on 2026-09-0
 
 1. **Tile Extraction** — Same `TileExtractor` (1024/128), no denoising. Reads region via `extract_tile():107`.
 2. **Save Raw** — `output/patches/raw/patch_000000.png` (RGB→BGR via cv2). One file per coordinate.
-3. **Macenko Normalize** `scripts/macenko_normalizer.py:47` — Workflow from `122_normalizing_HnE_images.py:62-154`:
-   - OD = -log10((I+1)/Io), Io=240, beta=0.15 transparent filter
-   - Covariance SVD (2 largest eigenvectors), angle phi, robust extremes alpha=1
-   - Stain vectors HE, concentrations C via lstsq, normalization by `HERef=[[0.5626,0.2159],[0.7201,0.8012],[0.4062,0.5581]]` and `maxCRef=[1.9705,1.0308]` `scripts/macenko_normalizer.py:8`
+3. **Macenko Normalize** `scripts/preprocessing/macenko_normalizer.py:47` — Workflow from `scripts/preprocessing/122_normalizing_HnE_images.py:62-154`:
+    - OD = -log10((I+1)/Io), Io=240, beta=0.15 transparent filter
+    - Covariance SVD (2 largest eigenvectors), angle phi, robust extremes alpha=1
+    - Stain vectors HE, concentrations C via lstsq, normalization by `HERef=[[0.5626,0.2159],[0.7201,0.8012],[0.4062,0.5581]]` and `maxCRef=[1.9705,1.0308]` `scripts/preprocessing/macenko_normalizer.py:8`
    - Reconstruct `Inorm = Io * exp(-HERef·C2)`, clipped to 254. Edge case: if ODhat<10, return original with warning.
    - Optional `normalize_with_he():116` returns Inorm, H, E separately.
 4. **Save Normalized** — `output/patches/normalized/patch_000000.png` (identical filename, different folder for pairing).
@@ -68,7 +68,7 @@ Verified run `output/preprocessed/metadata/processing_stats.json:1` on 2026-09-0
 
 ### 3.2 Configuration
 
-`scripts/config.yaml:52`:
+`scripts/preprocessing/config.yaml:52`:
 
 ```yaml
 macenko_normalization: {Io: 240, alpha: 1, beta: 0.15}
@@ -86,17 +86,16 @@ output/patches/
     └── stats.json  # {total_available:15800, total_requested, processed, failed, duration_seconds}
 ```
 
-Current test: `output/patches/raw/` and `output/patches/normalized/` each 10 files (first 10 grid positions, mostly background). Tissue demo `output/patches_tissue_demo/` (ROI 12544,896,5000,5000) shows meaningful shift e.g., raw mean [226,216,228] → normalized [220,214,229] `scripts/patch_normalization_pipeline.py:1`.
+Current test: `output/patches/raw/` and `output/patches/normalized/` each 10 files (first 10 grid positions, mostly background). Tissue demo `output/patches_tissue_demo/` (ROI 12544,896,5000,5000) shows meaningful shift e.g., raw mean [226,216,228] → normalized [220,214,229] `scripts/preprocessing/patch_normalization_pipeline.py:1`.
 
 ### 3.4 Usage
 
 ```bash
-cd scripts
-python patch_normalization_pipeline.py --max-tiles 10                          # quick test (default)
-python patch_normalization_pipeline.py --max-tiles 100 --output-dir ../output/pilot
-python patch_normalization_pipeline.py --roi 12544 896 5000 5000 --max-tiles 10  # tissue-rich ROI
-python patch_normalization_pipeline.py --all                                   # full WSI (~15-20 min CPU)
-python patch_normalization_pipeline.py --svs ../image/other.svs --level 1 --all
+python scripts/preprocessing/patch_normalization_pipeline.py --max-tiles 10                          # quick test (default)
+python scripts/preprocessing/patch_normalization_pipeline.py --max-tiles 100 --output-dir ../output/pilot
+python scripts/preprocessing/patch_normalization_pipeline.py --roi 12544 896 5000 5000 --max-tiles 10  # tissue-rich ROI
+python scripts/preprocessing/patch_normalization_pipeline.py --all                                   # full WSI (~15-20 min CPU)
+python scripts/preprocessing/patch_normalization_pipeline.py --svs ../image/other.svs --level 1 --all
 ```
 
 Same patch index in both folders enables: side-by-side QC, stain-augmentation training, and direct comparison in viewers.

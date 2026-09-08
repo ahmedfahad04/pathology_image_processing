@@ -16,29 +16,32 @@ Features:
 
 Usage:
   # First 10 patches (default, quick test):
-  python patch_normalization_pipeline.py --config config.yaml
+  python scripts/preprocessing/patch_normalization_pipeline.py --config config.yaml
 
   # First 10 explicitly:
-  python patch_normalization_pipeline.py --max-tiles 10
+  python scripts/preprocessing/patch_normalization_pipeline.py --max-tiles 10
 
   # Whole WSI:
-  python patch_normalization_pipeline.py --all
-  python patch_normalization_pipeline.py --max-tiles 0   # 0 means all
+  python scripts/preprocessing/patch_normalization_pipeline.py --all
+  python scripts/preprocessing/patch_normalization_pipeline.py --max-tiles 0   # 0 means all
 
   # Custom output:
-  python patch_normalization_pipeline.py --output-dir ../output/macenko_test --max-tiles 50
+  python scripts/preprocessing/patch_normalization_pipeline.py --output-dir ../output/macenko_test --max-tiles 50
 
   # With ROI:
-  python patch_normalization_pipeline.py --roi 0 0 5000 5000 --max-tiles 20
+  python scripts/preprocessing/patch_normalization_pipeline.py --roi 0 0 5000 5000 --max-tiles 20
 """
 
 import os
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 import json
 import yaml
 import cv2
 import argparse
 import logging
-from pathlib import Path
 from datetime import datetime
 from typing import Optional, Tuple, Dict, List
 
@@ -58,7 +61,9 @@ class PatchNormalizationPipeline:
     Keeps raw and normalized in separate folders for easy downstream use.
     """
 
-    def __init__(self, config_path: str = "config.yaml"):
+    def __init__(self, config_path: str = None):
+        if config_path is None:
+            config_path = str(Path(__file__).parent / "config.yaml")
         with open(config_path, 'r') as f:
             self.config = yaml.safe_load(f)
 
@@ -326,7 +331,7 @@ def main():
         description="Patch Normalization Pipeline: extract raw patches and Macenko-normalize them into separate folders (tissue-only by default)",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    parser.add_argument("--config", default="config.yaml", help="Path to config.yaml")
+    parser.add_argument("--config", default=None, help="Path to config.yaml")
     parser.add_argument("--svs", help="Override SVS path")
     parser.add_argument("--level", type=int, help="Override pyramid level")
     parser.add_argument("--max-tiles", type=int, default=10,
@@ -338,6 +343,9 @@ def main():
     parser.add_argument("--no-filter", action="store_true", help="Disable tissue filter: save every grid tile (including background) - reproduces old behavior with warnings")
     parser.add_argument("--include-background", action="store_true", help="Alias for --no-filter")
     args = parser.parse_args()
+
+    if args.config is None:
+        args.config = str(Path(__file__).parent / "config.yaml")
 
     pipeline = PatchNormalizationPipeline(config_path=args.config)
 

@@ -5,10 +5,10 @@
 # TSV map: ~/Documents/PROJECTS/Pathology_Image_Processing/output/tcga_blca_slides.tsv (col4=file_name, col3=file_id)
 #
 # Usage:
-#   ./scripts/download_svs.sh TCGA-2F-A9KQ-01Z-00-DX1.1C8CB2DD-5CC6-4E99-A0F9-32A0F598F5F9.svs
-#   ./scripts/download_svs.sh -d /tmp/my_images TCGA-2F-A9KQ-01Z-00-DX1.1C8CB2DD-5CC6-4E99-A0F9-32A0F598F5F9.svs TCGA-FD-A3NA-01Z-00-DX1.2AD62CEE-0D76-4382-AE2E-9B7FCB1130D9.svs
-#   ./scripts/download_svs.sh --help
-#   echo "TCGA-....svs" | ./scripts/download_svs.sh          # stdin
+#   ./scripts/utils/download_svs.sh TCGA-2F-A9KQ-01Z-00-DX1.1C8CB2DD-5CC6-4E99-A0F9-32A0F598F5F9.svs
+#   ./scripts/utils/download_svs.sh -d /tmp/my_images TCGA-2F-A9KQ-01Z-00-DX1.1C8CB2DD-5CC6-4E99-A0F9-32A0F598F5F9.svs TCGA-FD-A3NA-01Z-00-DX1.2AD62CEE-0D76-4382-AE2E-9B7FCB1130D9.svs
+#   ./scripts/utils/download_svs.sh --help
+#   echo "TCGA-....svs" | ./scripts/utils/download_svs.sh          # stdin
 
 set -euo pipefail
 

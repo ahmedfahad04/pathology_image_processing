@@ -49,7 +49,7 @@ In words (layman): **MUT area = tidy, dense tumor, uniform dots, little scar, no
 
 **Therefore:**
 - In a **WT slide** (like your `FJ-A871`) there is **no red hotspot to draw — everywhere scores low** (our annotated thumbnail shows a blue grid).
-- In a **MUT slide** (e.g. `TCGA-4Z-AA7Y…S249C` or `TCGA-4Z-AA83…S249C`), the red hotspot would sit **inside the densest tumor core**, not at the edge, at roughly **112×112 µm tile resolution** (≈224×224 px @1.0 MPP, paper Methods `scripts/analyze_fgfr3_mutations.py:133`). The simulated heatmap `simulated_heatmap_MUT_example.png` shows the pattern; the annotated WT thumbnail shows the null case.
+- In a **MUT slide** (e.g. `TCGA-4Z-AA7Y…S249C` or `TCGA-4Z-AA83…S249C`), the red hotspot would sit **inside the densest tumor core**, not at the edge, at roughly **112×112 µm tile resolution** (≈224×224 px @1.0 MPP, paper Methods `scripts/analysis/analyze_fgfr3_mutations.py:133`). The simulated heatmap `simulated_heatmap_MUT_example.png` shows the pattern; the annotated WT thumbnail shows the null case.
 
 ## 3) How to get a REAL box/heatmap (not a simulation)
 
@@ -87,4 +87,4 @@ Output is a PNG heatmap with red (MUT) / blue (WT) overlay + tile scores — the
 | `GDC_fetch_MUT_images.sh` | Commands to actually download the MUT SVS binaries |
 | `../mutation_analysis/` Fig1-7 + `report.md` | Cohort statistics (unchanged) |
 
-*Method refs: `data/data.txt:1` is GDC slide metadata (no FGFR3), cBioPortal PanCan 2018 `blca_tcga_pan_can_atlas_2018_mutations` is FGFR3 truth (`scripts/fetch_cbioportal_data.py:30`), tiling @1.0 MPP 224×224 µm (`docs/s41467-024-55331-6.pdf:9`).*
+*Method refs: `data/data.txt:1` is GDC slide metadata (no FGFR3), cBioPortal PanCan 2018 `blca_tcga_pan_can_atlas_2018_mutations` is FGFR3 truth (`scripts/analysis/fetch_cbioportal_data.py:30`), tiling @1.0 MPP 224×224 µm (`docs/s41467-024-55331-6.pdf:9`).*

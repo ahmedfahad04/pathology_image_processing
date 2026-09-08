@@ -11,11 +11,14 @@ Logic:
 """
 
 import os
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 import json
 import yaml
 import cv2
 import numpy as np
-from pathlib import Path
 from datetime import datetime
 from typing import Optional, Tuple, List, Dict
 import logging
@@ -47,13 +50,15 @@ class PreprocessingPipeline:
     6. Save processed tiles and metadata — tissue only; rejected optionally saved if configured
     """
     
-    def __init__(self, config_path: str = "config.yaml"):
+    def __init__(self, config_path: str = None):
         """
         Initialize pipeline with configuration.
         
         Args:
             config_path: Path to YAML configuration file
         """
+        if config_path is None:
+            config_path = str(Path(__file__).parent / "config.yaml")
         # Load configuration
         with open(config_path, 'r') as f:
             self.config = yaml.safe_load(f)
@@ -385,9 +390,9 @@ def main():
         description="Pathology Image Preprocessing Pipeline (tissue-only: only patches with tissue are processed/saved)"
     )
     parser.add_argument(
-        "--config", 
-        default="config.yaml",
-        help="Path to configuration file (default: config.yaml)"
+        "--config",
+        default=None,
+        help="Path to configuration file (default: scripts/preprocessing/config.yaml)"
     )
     parser.add_argument(
         "--svs",

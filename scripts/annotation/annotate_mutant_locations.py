@@ -19,8 +19,8 @@ TL;DR for the confusion:
     the exact GDC download command.
 
 Usage:
-  python scripts/annotate_mutant_locations.py
-  python scripts/annotate_mutant_locations.py --data-dir data --image-dir image --out-dir output/mutant_locations
+  python scripts/annotation/annotate_mutant_locations.py
+  python scripts/annotation/annotate_mutant_locations.py --data-dir data --image-dir image --out-dir output/mutant_locations
 
 Outputs:
   output/mutant_locations/
@@ -123,7 +123,7 @@ def gdc_fetch_script(out_dir, mut_df):
         lines.append(f"# gdc-client: gdc-client download $(grep {fname} gdc_manifest.txt | cut -f1)")
         lines.append(f"echo \"To fetch {fname}: go to https://portal.gdc.cancer.gov/files and search file_name\"")
         lines.append("")
-    lines.append("# For bulk: use output/tcga_blca_file_names.txt and scripts/fetch_cbioportal_data.py already does metadata; for SVS binary use GDC API:")
+    lines.append("# For bulk: use output/tcga_blca_file_names.txt and scripts/analysis/fetch_cbioportal_data.py already does metadata; for SVS binary use GDC API:")
     lines.append("# curl 'https://api.gdc.cancer.gov/files/<FILE_UUID>/data' -o image/<FILE_NAME>.svs")
     (out_dir / "GDC_fetch_MUT_images.sh").write_text("\n".join(lines))
     print(f"Wrote {out_dir/'GDC_fetch_MUT_images.sh'}")
@@ -334,7 +334,7 @@ def write_report(out_dir, mut_df, wt_df, image_dir):
 
     **Therefore:**
     - In a **WT slide** (like your `FJ-A871`) there is **no red hotspot to draw — everywhere scores low** (our annotated thumbnail shows a blue grid).
-    - In a **MUT slide** (e.g. `TCGA-4Z-AA7Y…S249C` or `TCGA-4Z-AA83…S249C`), the red hotspot would sit **inside the densest tumor core**, not at the edge, at roughly **112×112 µm tile resolution** (≈224×224 px @1.0 MPP, paper Methods `scripts/analyze_fgfr3_mutations.py:133`). The simulated heatmap `simulated_heatmap_MUT_example.png` shows the pattern; the annotated WT thumbnail shows the null case.
+    - In a **MUT slide** (e.g. `TCGA-4Z-AA7Y…S249C` or `TCGA-4Z-AA83…S249C`), the red hotspot would sit **inside the densest tumor core**, not at the edge, at roughly **112×112 µm tile resolution** (≈224×224 px @1.0 MPP, paper Methods `scripts/analysis/analyze_fgfr3_mutations.py:133`). The simulated heatmap `simulated_heatmap_MUT_example.png` shows the pattern; the annotated WT thumbnail shows the null case.
 
     ## 3) How to get a REAL box/heatmap (not a simulation)
 
@@ -372,7 +372,7 @@ def write_report(out_dir, mut_df, wt_df, image_dir):
     | `GDC_fetch_MUT_images.sh` | Commands to actually download the MUT SVS binaries |
     | `../mutation_analysis/` Fig1-7 + `report.md` | Cohort statistics (unchanged) |
 
-    *Method refs: `data/data.txt:1` is GDC slide metadata (no FGFR3), cBioPortal PanCan 2018 `blca_tcga_pan_can_atlas_2018_mutations` is FGFR3 truth (`scripts/fetch_cbioportal_data.py:30`), tiling @1.0 MPP 224×224 µm (`docs/s41467-024-55331-6.pdf:9`).*
+    *Method refs: `data/data.txt:1` is GDC slide metadata (no FGFR3), cBioPortal PanCan 2018 `blca_tcga_pan_can_atlas_2018_mutations` is FGFR3 truth (`scripts/analysis/fetch_cbioportal_data.py:30`), tiling @1.0 MPP 224×224 µm (`docs/s41467-024-55331-6.pdf:9`).*
     """)
     (out_dir / "report.md").write_text(report)
     print(f"Wrote {out_dir/'report.md'}")
