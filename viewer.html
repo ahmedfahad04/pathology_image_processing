@@ -242,6 +242,27 @@
             <div id="inspect-badge" class="unknown">— <span class="small">select an image</span></div>
         </div>
 
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:10px 0 14px 0">
+            <div style="background:#fffde7;border:2px solid #fbc02d;border-radius:10px;padding:14px 16px;box-shadow:0 2px 6px rgba(0,0,0,0.06)">
+                <div style="font-weight:900;color:#5d4037;font-size:14px;margin-bottom:8px;display:flex;align-items:center;gap:8px"><span style="font-size:18px">📚</span> How the paper found the mutant (in plain words)</div>
+                <ul style="margin:0 0 0 18px;padding:0;color:#4e342e;font-size:13px;line-height:1.65;font-weight:500">
+                    <li>Doctors took the same tissue that made the glass slide and <b>checked the DNA for spelling mistakes in the FGFR3 gene</b>.</li>
+                    <li>If they found a known harmful spelling mistake, they marked <b>the patient as "mutant"</b>. If not, they marked them "normal".</li>
+                    <li>Then they showed the computer <b>the whole slide image with just one label</b> — like showing a photo of a class and saying "this class has a student with a red hat" <b>without pointing to who</b>.</li>
+                    <li>The computer learned by itself which small pieces of the image look most like "mutant" — that's how it later makes a <b>colour heatmap</b>.</li>
+                </ul>
+            </div>
+            <div style="background:#e8f5e9;border:2px solid #81c784;border-radius:10px;padding:14px 16px;box-shadow:0 2px 6px rgba(0,0,0,0.06)">
+                <div style="font-weight:900;color:#1b5e20;font-size:14px;margin-bottom:8px;display:flex;align-items:center;gap:8px"><span style="font-size:18px">🔍</span> What we have here — and what we don't</div>
+                <ul style="margin:0 0 0 18px;padding:0;color:#1b3329;font-size:13px;line-height:1.65;font-weight:500">
+                    <li><b>We HAVE:</b> for every image, whether it is mutant or normal, which spelling mistake it is, and basic patient info (like stage, age) — all saved in <code>data/</code>.</li>
+                    <li><b>We DON'T have:</b> a box or coloured spot inside the image that says "mutant is here". No file tells the exact pixels.</li>
+                    <li><b>What you can do here at most:</b> browse the list, filter mutant / normal, see the details, and click <b>Locate in Viewer →</b> to open the full slide. Remember: if a slide is called mutant, <b>the whole slide counts as mutant</b> — the mistake is in the DNA, not in one visible dot.</li>
+                </ul>
+            </div>
+        </div>
+        <style>@media(max-width:900px){div[style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr !important}}</style>
+
         <div id="inspect-controls">
             <label for="inspectFilter"><b>Show:</b></label>
             <select id="inspectFilter">
@@ -289,7 +310,7 @@
             <!-- Mutant Location in Slide (NEW) -->
             <div class="inspect-card" id="card-location" style="border:2px solid #ef5350; background: linear-gradient(180deg, #fff 0%, #fff8f8 100%);">
                 <h3>📍 Mutant Location in Slide <span id="card-location-badge"></span>
-                    <span class="card-actions"><button id="btn-locate-viewer" title="Open this slide in Image Viewer and highlight mutant region">Locate in Viewer →</button> <button id="btn-toggle-heatmap-inspect" title="Preview predicted mutant attention heatmap">Preview heatmap</button></span>
+                    <span class="card-actions"><button id="btn-locate-viewer" title="Open this slide in Image Viewer and highlight mutant region">Locate in Viewer →</button></span>
                 </h3>
                 <div id="location-body">
                     <p class="sub" style="font-size:12.5px; color:#333; margin:4px 0 8px 0; line-height:1.5"><b>Important:</b> cBioPortal gives <b>bulk per-sample</b> mutation (e.g. <code>chr4:1806089 G→T, G370C</code>), <b>not</b> an <code>x,y</code> box on the SVS. The variant is diffusely present in tumor DNA — H&amp;E alone cannot point to a single nucleus. Location below is <b>model-predicted morphology</b> (which tissue regions look most mutant-like) + navigation to the slide.</p>
@@ -301,16 +322,6 @@
                     </table>
                     <div id="loc-action" style="margin:10px 0 6px 0; display:flex; gap:8px; flex-wrap:wrap; align-items:center">
                         <span id="loc-status" class="sub"></span>
-                    </div>
-                    <div id="loc-heatmap-wrap" style="display:none; margin-top:10px">
-                        <div style="display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap">
-                            <img id="loc-heatmap-img" src="" alt="Predicted mutant attention heatmap" style="max-width:320px; width:100%; border:1px solid #c5cae9; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.12)">
-                            <div style="flex:1; min-width:220px">
-                                <p style="font-size:13px; font-weight:800; color:#b71c1c; margin:0 0 6px 0">What you see</p>
-                                <p class="sub" style="font-size:12.5px; color:#222; margin:0; line-height:1.5">Simulated tile-attention: <span style="display:inline-block;width:12px;height:12px;background:#d32f2f;border-radius:2px;vertical-align:middle"></span> red = most mutant-like morphology, <span style="display:inline-block;width:12px;height:12px;background:#1e88e5;border-radius:2px;vertical-align:middle"></span> blue = WT-like. Real model (<a href="https://github.com/PABannier/fgfr3mut" target="_blank">fgfr3mut</a>, Bioptimus H0, 1.0 MPP, 224×224 µm) would produce an equivalent heatmap by MIL attention — here we show a <i>preview</i> for guidance. Use <b>Locate in Viewer</b> to jump to the full-resolution SVS.</p>
-                                <p class="sub" style="margin-top:8px"><code>output/mutant_locations/simulated_heatmap_MUT_example.png</code> · also see <code>output/mutant_locations/report.md</code></p>
-                            </div>
-                        </div>
                     </div>
                     <p id="loc-wt-note" style="display:none; font-size:13px; font-weight:700; color:#1b5e20; background:#e8f5e9; border:1px solid #a5d6a7; padding:8px 10px; border-radius:6px; margin-top:10px">This slide is <b>WILD-TYPE</b> — no activating FGFR3 variant, so no mutant region exists to locate. The whole tumor is WT (example: <code>TCGA-FJ-A871-01Z</code> on disk is WT).</p>
                 </div>
@@ -850,7 +861,6 @@
             document.getElementById('loc-vaf').innerHTML = '<span class="kv-empty">loading…</span>';
             document.getElementById('loc-region').innerHTML = '<span class="kv-empty">—</span>';
             document.getElementById('card-location-badge').innerHTML = entry.FGFR3_status==='MUT' ? '<span class="pill mut">MUTANT</span>' : '<span class="pill wt">WT</span>';
-            document.getElementById('loc-heatmap-wrap').style.display='none';
             document.getElementById('loc-wt-note').style.display='none';
             document.getElementById('loc-status').textContent='';
 
@@ -909,16 +919,7 @@
                 document.getElementById('loc-status').innerHTML = isMutLoc
                     ? `<span class="val-mut">G370C example: TCGA-ZF-AA4U chr4:1806089 G→T (protein G370C) — present in tumor DNA, predicts papillary histology (paper Fig.5a).</span>`
                     : `<span class="val-wt">WT — no FGFR3 G370C/Y373C etc. to locate.</span>`;
-                document.getElementById('loc-heatmap-wrap').style.display = isMutLoc ? 'block' : 'none';
                 document.getElementById('loc-wt-note').style.display = isMutLoc ? 'none' : 'block';
-                if(isMutLoc){
-                    // set heatmap preview image (fallback to simulated)
-                    const hm=document.getElementById('loc-heatmap-img');
-                    // try per-sample heatmap if exists, else generic
-                    hm.src='output/mutant_locations/simulated_heatmap_MUT_example.png';
-                    hm.onerror=()=>{ hm.style.display='none'; };
-                    hm.style.display='block';
-                }
                 // stage/T already
                 if(summaryData.sample_clinical_T) document.getElementById('in-stage').innerHTML = `${summaryData.sample_clinical_STAGE||entry.STAGE} <span class="sub">(${summaryData.sample_clinical_T})</span>`;
                 // files list
@@ -937,9 +938,7 @@
                 document.getElementById('loc-protein').innerHTML = isMutElse ? `<span class="val-mut">${entry.proteinChange_raw||entry.hotspot}</span>` : '<span class="kv-empty">— (WT)</span>';
                 document.getElementById('loc-vaf').innerHTML = entry.VAF ? `<span class="val-strong" style="color:#b71c1c">${parseFloat(entry.VAF).toFixed(4)}</span> <span class="sub">(Alt ${entry.tumorAltCount||'?'} / Ref ${entry.tumorRefCount||'?'})</span>` : '<span class="kv-empty">—</span>';
                 document.getElementById('loc-region').innerHTML = isMutElse ? `<span class="val-mut">Diffuse — whole slide is MUTANT</span> <span class="sub">(manifest only)</span>` : `<span class="val-wt">No mutant region — WT slide</span>`;
-                document.getElementById('loc-heatmap-wrap').style.display = isMutElse ? 'block' : 'none';
                 document.getElementById('loc-wt-note').style.display = isMutElse ? 'none' : 'block';
-                if(isMutElse){ const hm=document.getElementById('loc-heatmap-img'); hm.src='output/mutant_locations/simulated_heatmap_MUT_example.png'; hm.style.display='block'; }
             }
             // enrich patient/sample clinical — high-contrast values
             try{
@@ -996,12 +995,6 @@
             }
             switchTab('viewer'); window.scrollTo({top:0, behavior:'smooth'});
             setTimeout(()=> updateViewerBanner(entry.file_name), 600);
-        });
-        document.getElementById('btn-toggle-heatmap-inspect').addEventListener('click', ()=>{
-            const wrap=document.getElementById('loc-heatmap-wrap');
-            const isHidden=wrap.style.display==='none' || !wrap.style.display;
-            wrap.style.display=isHidden?'block':'none';
-            document.getElementById('btn-toggle-heatmap-inspect').textContent=isHidden?'Hide heatmap':'Preview heatmap';
         });
         document.getElementById('btn-open-viewer').addEventListener('click', ()=>{
             const entry = inspectData.find(d=>d.folder===currentInspectFolder);
