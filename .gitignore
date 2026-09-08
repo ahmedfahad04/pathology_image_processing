@@ -6,3 +6,4 @@ output/*
 !output/mutant_locations/**
 scripts/__pycache__/**
 data/**
+!data/TCGA-BLCA-Metadata.zip
