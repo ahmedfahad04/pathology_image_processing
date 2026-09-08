@@ -6,9 +6,9 @@
 set -e
 
 # MUT TCGA-CF-A5U8-01  G370C/G372C  VAF 0.45  RSEM 12326
-# GDC portal search: https://portal.gdc.cancer.gov/files/TCGA-CF-A5U8-01A-01-TSA.CB3B5182-B41C-4499-9769-1720760C914C.svs
-# gdc-client: gdc-client download $(grep TCGA-CF-A5U8-01A-01-TSA.CB3B5182-B41C-4499-9769-1720760C914C.svs gdc_manifest.txt | cut -f1)
-echo "To fetch TCGA-CF-A5U8-01A-01-TSA.CB3B5182-B41C-4499-9769-1720760C914C.svs: go to https://portal.gdc.cancer.gov/files and search file_name"
+# GDC portal search: https://portal.gdc.cancer.gov/files/TCGA-2F-A9KQ-01Z-00-DX1.1C8CB2DD-5CC6-4E99-A0F9-32A0F598F5F9.svs
+# gdc-client: gdc-client download $(grep TCGA-2F-A9KQ-01Z-00-DX1.1C8CB2DD-5CC6-4E99-A0F9-32A0F598F5F9.svs gdc_manifest.txt | cut -f1)
+echo "To fetch TCGA-2F-A9KQ-01Z-00-DX1.1C8CB2DD-5CC6-4E99-A0F9-32A0F598F5F9.svs: go to https://portal.gdc.cancer.gov/files and search file_name"
 
 # MUT TCGA-CF-A5U8-01  G370C/G372C  VAF 0.45  RSEM 12326
 # GDC portal search: https://portal.gdc.cancer.gov/files/TCGA-CF-A5U8-01Z-00-DX1.D0385BD3-3128-41C6-889D-4EC916B2B228.svs
