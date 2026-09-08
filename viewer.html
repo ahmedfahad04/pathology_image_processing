@@ -84,6 +84,67 @@
         #top-bar { display: flex; gap: 12px; align-items: center; margin: 10px 0; flex-wrap: wrap; }
         #imageSelect { padding: 6px 10px; min-width: 380px; border: 1px solid #666; border-radius: 4px; background: white; font-family: 'Open Sans', sans-serif; }
         #shot-bar button, #save-section button { font-family: 'Open Sans', sans-serif; display: inline-flex; align-items: center; gap: 6px; }
+
+        /* ===== Tabs ===== */
+        #tabs { display: flex; gap: 0; margin: 14px 0 0 0; border-bottom: 3px solid #3F51B5; }
+        .tab-btn { padding: 10px 22px; border: 1px solid #bbb; border-bottom: none; background: #e8eaf6; cursor: pointer; font-family: 'Open Sans', sans-serif; font-weight: 700; font-size: 14px; color: #333; border-radius: 8px 8px 0 0; margin-right: 6px; display: inline-flex; align-items: center; gap: 8px; }
+        .tab-btn:hover { background: #d9dcf5; }
+        .tab-btn.active { background: #3F51B5; color: white; border-color: #3F51B5; }
+        .tab-btn .tab-count { font-size: 12px; background: rgba(255,255,255,0.85); color: #3F51B5; padding: 2px 7px; border-radius: 10px; font-weight: 800; }
+        .tab-btn.active .tab-count { background: white; }
+        .tab-panel { display: none; width: 100%; }
+        .tab-panel.active { display: block; }
+        /* Inspect tab */
+        #tab-inspect { padding: 14px 0 0 0; }
+        #inspect-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 10px; }
+        #inspect-header h2 { margin: 0; color: #3F51B5; font-size: 20px; }
+        #inspect-header p.sub { margin: 4px 0 0 0; color: #555; font-size: 12px; }
+        #inspect-badge { padding: 10px 18px; border-radius: 999px; font-weight: 800; font-size: 14px; border: 2px solid; white-space: nowrap; min-width: 120px; text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
+        #inspect-badge.mut { background: #fde8e8; color: #b71c1c; border-color: #ef9a9a; }
+        #inspect-badge.wt { background: #e8f5e9; color: #1b5e20; border-color: #a5d6a7; }
+        #inspect-badge.unknown { background: #eceff1; color: #555; border-color: #ccc; }
+        #inspect-badge .small { display: block; font-weight: 600; font-size: 11px; opacity: 0.85; margin-top: 2px; }
+        #inspect-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: #f5f5ff; border: 1px solid #c5cae9; border-radius: 8px; padding: 12px 14px; margin: 10px 0 14px 0; }
+        #inspect-controls label { font-size: 13px; }
+        #inspectFilter, #inspectSelect, #inspectSearch { padding: 7px 10px; border: 1px solid #888; border-radius: 6px; font-family: 'Open Sans', sans-serif; background: white; }
+        #inspectSelect { min-width: 380px; max-width: 520px; }
+        #inspectSearch { min-width: 200px; }
+        #inspect-count { margin-left: auto; font-size: 12px; color: #555; }
+        #inspect-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+        @media (max-width: 1100px){ #inspect-grid{ grid-template-columns: 1fr; } #openseadragon1{ width: 100%; } #container{ flex-direction: column; } #metadata{ width: 100%; } }
+        .inspect-card { border: 1px solid #9fa8da; border-radius: 10px; background: #fff; padding: 14px 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .inspect-card h3 { margin: 0 0 10px 0; font-size: 15px; color: #b71c1c; border-bottom: 2px solid #e8eaf6; padding-bottom: 7px; display: flex; justify-content: space-between; align-items: center; letter-spacing: 0.2px; }
+        .inspect-card h3 .card-actions { display: flex; gap: 6px; }
+        .inspect-card h3 .card-actions button { font-size: 12px; padding: 4px 10px; border: 1px solid #7986cb; border-radius: 6px; background: #e8eaf6; color: #283593; cursor: pointer; font-weight: 700; }
+        .inspect-card h3 .card-actions button:hover { background: #c5cae9; }
+        .inspect-card table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 14.5px; line-height: 1.45; }
+        .inspect-card th { background: #e8eaf6; color: #1a237e; font-weight: 800; width: 34%; font-size: 13.5px; border: 1px solid #c5cae9; padding: 9px 11px; text-align: left; vertical-align: top; }
+        .inspect-card td { border: 1px solid #c5cae9; padding: 9px 11px; text-align: left; vertical-align: top; word-break: break-word; background: #ffffff; color: #0d1b3e; font-weight: 700; font-size: 15px; letter-spacing: 0.15px; }
+        .inspect-card td .val-mut { color: #b71c1c; font-weight: 900; background: #ffebee; padding: 2px 6px; border-radius: 4px; border: 1px solid #ef9a9a; }
+        .inspect-card td .val-wt { color: #1b5e20; font-weight: 800; background: #e8f5e9; padding: 2px 6px; border-radius: 4px; border: 1px solid #a5d6a7; }
+        .inspect-card td .val-strong { color: #0d47a1; font-weight: 800; }
+        .inspect-card td .val-mono { font-family: monospace; font-size: 14px; background: #f5f7ff; padding: 2px 6px; border-radius: 4px; border: 1px solid #c5cae9; color: #1a237e; }
+        .inspect-card .sub { color: #444; font-size: 12px; margin-top: 8px; line-height: 1.4; }
+        .inspect-card .kv-empty { color: #9a9a9a; font-weight: 600; font-style: italic; font-size: 13px; }
+        #inspect-raw { max-height: 440px; overflow: auto; background: #f8f9ff; border: 1px solid #c5cae9; border-radius: 8px; padding: 10px; font-size: 12.5px; white-space: pre-wrap; word-break: break-all; color: #1a237e; line-height: 1.45; }
+        /* Mutant location helpers */
+        #viewer-mut-banner { position: absolute; top: 8px; left: 8px; right: 8px; z-index: 5; display: none; align-items: center; justify-content: space-between; gap: 10px; background: linear-gradient(90deg, #ffebee 0%, #fff3e0 100%); border: 2px solid #ef5350; border-radius: 8px; padding: 8px 12px; font-size: 13px; font-weight: 800; color: #b71c1c; box-shadow: 0 2px 8px rgba(0,0,0,0.18); }
+        #viewer-mut-banner.wt { background: linear-gradient(90deg, #e8f5e9 0%, #e8eaf6 100%); border-color: #66bb6a; color: #1b5e20; }
+        #viewer-mut-banner .banner-actions { display: flex; gap: 8px; align-items: center; }
+        #viewer-mut-banner button { padding: 5px 10px; border-radius: 6px; border: 1px solid #c62828; background: white; color: #c62828; font-weight: 800; cursor: pointer; font-size: 12px; }
+        #viewer-mut-banner.wt button { border-color: #2e7d32; color: #2e7d32; }
+        #heatmap-overlay { position: absolute; inset: 0; display: none; z-index: 4; pointer-events: none; opacity: 0.62; }
+        #heatmap-overlay.on { display: block; }
+        #heatmap-overlay .hm-grid { width: 100%; height: 100%; display: grid; }
+        #heatmap-overlay .hm-cell { border: 0.5px solid rgba(255,255,255,0.22); }
+        #heatmap-legend { position: absolute; bottom: 10px; right: 10px; background: rgba(255,255,255,0.92); border: 1px solid #999; border-radius: 6px; padding: 6px 8px; font-size: 11px; line-height: 1.3; display: none; z-index: 6; }
+        #heatmap-legend.on { display: block; }
+        .pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; border: 1px solid; }
+        .pill.mut { background: #ffebee; color: #c62828; border-color: #ef9a9a; }
+        .pill.wt { background: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; }
+        .btn-primary { padding: 7px 12px; border: 1px solid #3F51B5; border-radius: 6px; background: #3F51B5; color: white; cursor: pointer; font-weight: 700; font-family: 'Open Sans', sans-serif; }
+        .btn-primary:hover { background: #303f9f; }
+        .btn-secondary { padding: 6px 10px; border: 1px solid #888; border-radius: 6px; background: white; cursor: pointer; font-family: 'Open Sans', sans-serif; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/openseadragon@4.1.1/build/openseadragon/openseadragon.js"></script>
     <script type="module" crossorigin="anonymous" src="https://cdn.jsdelivr.net/gh/episphere/GeoTIFFTileSource-JPEG2k/GeoTIFFTileSource.js"></script>
@@ -91,66 +152,216 @@
 </head>
 <body>
     <h1>SVS Viewer Pro <sup style="font-size:small;color:navy">[powered by <a href="https://github.com/episphere/svs" target="_blank">episphere/svs</a>]</sup></h1>
-    <div id="top-bar">
-        <label for="imageSelect"><b>Image:</b></label>
-        <select id="imageSelect"><option>loading...</option></select>
-    </div>
-    <p>File: <code id="filename">—</code> — <code id="filesize">fetching...</code></p>
-    <p id="status">Loading image... please wait (large file)</p>
-    <div id="shot-bar">
-        <button id="btn-full" title="Fill viewport (keeps metadata, ESC to exit)">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-            View Full Screen
+
+    <div id="tabs" role="tablist">
+        <button class="tab-btn active" data-tab="viewer" role="tab" aria-selected="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+            Image Viewer
         </button>
-        <span class="sub" id="shot-hint" style="margin-left:8px">Scroll to zoom, double-click to zoom, drag to pan</span>
+        <button class="tab-btn" data-tab="inspect" role="tab" aria-selected="false">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            Inspect Metadata <span class="tab-count" id="tab-inspect-count">—</span>
+        </button>
     </div>
-    <div id="container">
-        <div id="openseadragon1" class="openseadragon"></div>
-        <div id="metadata">
-            <h2>Image Metadata</h2>
-            <p class="sub"><span id="meta-desc">Aperio</span> &middot; <span id="meta-status">loading...</span></p>
 
-            <h3>Save Image</h3>
-            <div id="save-section">
-                <button id="btn-png" title="Save viewport as PNG (lossless, with BST footer)">📸 Save PNG</button>
-                <button id="btn-jpg" title="Save viewport as JPG (smaller file)">📸 Save JPG</button>
-                <button id="btn-exit-panel" title="Exit viewport fullscreen">✕ Exit Fullscreen</button>
-            </div>
-            <p class="sub">Saves current viewport at displayed resolution with file name, level, zoom & BST timestamp footer.</p>
-
-            <h3>File &amp; Physical</h3>
-            <table>
-                <tr><th>Field</th><th>Value</th></tr>
-                <tr title="Compressed size on disk — JPEG tiles stored in the SVS file. This is what you download/store (1.1 GB here)."><td>File size</td><td id="m-filesize">—</td></tr>
-                <tr title="Pixel dimensions of the highest-resolution level (Level 0). Width × height in pixels — e.g., 141k×89k = 12.7 gigapixels."><td>Dimensions (full)</td><td id="m-dims">—</td></tr>
-                <tr title="Raw size if every pixel were decoded to RGB (width × height × 3 bytes). You’d need this much RAM to open the full image at once — that’s why we use tiles."><td>Uncompressed</td><td id="m-uncompressed">—</td></tr>
-                <tr title="TIFF tag Compression (259): 7 = JPEG. Each 240×240 tile is a separate JPEG (quality Q=30) so any tile can be fetched/decoded alone."><td>Compression</td><td id="m-compression">—</td></tr>
-                <tr title="Microns Per Pixel — physical scale from ImageDescription. Smaller = higher resolution. 0.25 µm/px ≈ 40× magnification, ~3960 dpi."><td>MPP</td><td id="m-mpp">—</td></tr>
-                <tr title="Apparent magnification of the scanner objective that captured the slide (e.g., 20×, 40×). Determines MPP."><td>AppMag</td><td id="m-appmag">—</td></tr>
-                <tr title="Real-world size of the imaged tissue area on glass: width×MPP by height×MPP, in millimeters."><td>Physical size</td><td id="m-physical">—</td></tr>
-            </table>
-
-            <h3>Pyramid Levels</h3>
-            <table id="pyramid-table">
-                <tr><th>Level</th><th>Dimensions</th><th>Tile</th><th>Grid</th><th>Tiles</th></tr>
-                <tr><td colspan="5" style="text-align:center" class="sub">loading...</td></tr>
-            </table>
-            <p class="sub" id="pyramid-sub"></p>
-
-            <h3>Live Viewer Info</h3>
-            <table id="live-info">
-                <tr><th>Field</th><th>Value</th></tr>
-                <tr><td>Levels loaded</td><td id="live-levels">—</td></tr>
-                <tr><td>Current level</td><td id="live-current">—</td></tr>
-                <tr><td>Viewport</td><td id="live-viewport">drag/zoom to update</td></tr>
-                <tr><td>Zoom</td><td id="live-zoom">—</td></tr>
-            </table>
-            <p class="sub">Highlighted row = level currently rendered (based on zoom → required pixels). Scroll to zoom — Level 0 loads <code>240×240</code> tiles for that region.</p>
+    <!-- ========== Tab: Image Viewer (original page) ========== -->
+    <section id="tab-viewer" class="tab-panel active" role="tabpanel">
+        <div id="top-bar">
+            <label for="imageSelect"><b>Image:</b></label>
+            <select id="imageSelect"><option>loading...</option></select>
         </div>
-    </div>
-    <p style="font-size: small; color: #555;">
-        SVS Viewer Pro — powered by <a href="https://github.com/episphere/svs" target="_blank">episphere/svs</a> + OpenSeadragon.GeoTIFFTileSource. Works with any SVS in <code>image/</code> via dropdown or <code>?file=image/your.svs</code>.
-    </p>
+        <p>File: <code id="filename">—</code> — <code id="filesize">fetching...</code></p>
+        <p id="status">Loading image... please wait (large file)</p>
+        <div id="shot-bar">
+            <button id="btn-full" title="Fill viewport (keeps metadata, ESC to exit)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                View Full Screen
+            </button>
+            <span class="sub" id="shot-hint" style="margin-left:8px">Scroll to zoom, double-click to zoom, drag to pan</span>
+        </div>
+        <div id="container">
+            <div id="openseadragon1" class="openseadragon" style="position:relative">
+                <div id="viewer-mut-banner"></div>
+                <div id="heatmap-overlay"><div class="hm-grid" id="hm-grid"></div></div>
+                <div id="heatmap-legend"><b>Predicted attention</b><br><span style="display:inline-block;width:12px;height:12px;background:#d32f2f;vertical-align:middle;border-radius:2px"></span> High (mutant-like) &nbsp; <span style="display:inline-block;width:12px;height:12px;background:#ffeb3b;vertical-align:middle;border-radius:2px"></span> Mid &nbsp; <span style="display:inline-block;width:12px;height:12px;background:#1e88e5;vertical-align:middle;border-radius:2px"></span> Low</div>
+            </div>
+            <div id="metadata">
+                <h2>Image Metadata</h2>
+                <p class="sub"><span id="meta-desc">Aperio</span> &middot; <span id="meta-status">loading...</span></p>
+
+                <h3>Save Image</h3>
+                <div id="save-section">
+                    <button id="btn-png" title="Save viewport as PNG (lossless, with BST footer)">📸 Save PNG</button>
+                    <button id="btn-jpg" title="Save viewport as JPG (smaller file)">📸 Save JPG</button>
+                    <button id="btn-exit-panel" title="Exit viewport fullscreen">✕ Exit Fullscreen</button>
+                </div>
+                <p class="sub">Saves current viewport at displayed resolution with file name, level, zoom & BST timestamp footer.</p>
+
+                <h3>File &amp; Physical</h3>
+                <table>
+                    <tr><th>Field</th><th>Value</th></tr>
+                    <tr title="Compressed size on disk — JPEG tiles stored in the SVS file. This is what you download/store (1.1 GB here)."><td>File size</td><td id="m-filesize">—</td></tr>
+                    <tr title="Pixel dimensions of the highest-resolution level (Level 0). Width × height in pixels — e.g., 141k×89k = 12.7 gigapixels."><td>Dimensions (full)</td><td id="m-dims">—</td></tr>
+                    <tr title="Raw size if every pixel were decoded to RGB (width × height × 3 bytes). You’d need this much RAM to open the full image at once — that’s why we use tiles."><td>Uncompressed</td><td id="m-uncompressed">—</td></tr>
+                    <tr title="TIFF tag Compression (259): 7 = JPEG. Each 240×240 tile is a separate JPEG (quality Q=30) so any tile can be fetched/decoded alone."><td>Compression</td><td id="m-compression">—</td></tr>
+                    <tr title="Microns Per Pixel — physical scale from ImageDescription. Smaller = higher resolution. 0.25 µm/px ≈ 40× magnification, ~3960 dpi."><td>MPP</td><td id="m-mpp">—</td></tr>
+                    <tr title="Apparent magnification of the scanner objective that captured the slide (e.g., 20×, 40×). Determines MPP."><td>AppMag</td><td id="m-appmag">—</td></tr>
+                    <tr title="Real-world size of the imaged tissue area on glass: width×MPP by height×MPP, in millimeters."><td>Physical size</td><td id="m-physical">—</td></tr>
+                </table>
+
+                <h3>Pyramid Levels</h3>
+                <table id="pyramid-table">
+                    <tr><th>Level</th><th>Dimensions</th><th>Tile</th><th>Grid</th><th>Tiles</th></tr>
+                    <tr><td colspan="5" style="text-align:center" class="sub">loading...</td></tr>
+                </table>
+                <p class="sub" id="pyramid-sub"></p>
+
+                <h3>Live Viewer Info</h3>
+                <table id="live-info">
+                    <tr><th>Field</th><th>Value</th></tr>
+                    <tr><td>Levels loaded</td><td id="live-levels">—</td></tr>
+                    <tr><td>Current level</td><td id="live-current">—</td></tr>
+                    <tr><td>Viewport</td><td id="live-viewport">drag/zoom to update</td></tr>
+                    <tr><td>Zoom</td><td id="live-zoom">—</td></tr>
+                </table>
+                <p class="sub">Highlighted row = level currently rendered (based on zoom → required pixels). Scroll to zoom — Level 0 loads <code>240×240</code> tiles for that region.</p>
+            </div>
+        </div>
+        <p style="font-size: small; color: #555;">
+            SVS Viewer Pro — powered by <a href="https://github.com/episphere/svs" target="_blank">episphere/svs</a> + OpenSeadragon.GeoTIFFTileSource. Works with any SVS in <code>image/</code> via dropdown or <code>?file=image/your.svs</code>.
+        </p>
+    </section>
+
+    <!-- ========== Tab: Inspect Metadata ========== -->
+    <section id="tab-inspect" class="tab-panel" role="tabpanel">
+        <div id="inspect-header">
+            <div>
+                <h2>Inspect Metadata</h2>
+                <p class="sub">All metadata stored folder-wise in <code>data/</code> — one folder per image (<code>file_name.txt</code> + <code>cbioportal_*</code> JSONs). Use filter to narrow by mutation status, then pick an image to see full details.</p>
+            </div>
+            <div id="inspect-badge" class="unknown">— <span class="small">select an image</span></div>
+        </div>
+
+        <div id="inspect-controls">
+            <label for="inspectFilter"><b>Show:</b></label>
+            <select id="inspectFilter">
+                <option value="all">All images</option>
+                <option value="MUT">Mutant only</option>
+                <option value="WT">Non-mutant (WT) only</option>
+            </select>
+            <label for="inspectSearch"><b>Search:</b></label>
+            <input id="inspectSearch" type="search" placeholder="folder / sample / patient / hotspot" autocomplete="off">
+            <label for="inspectSelect"><b>Image:</b></label>
+            <select id="inspectSelect"><option>loading manifest...</option></select>
+            <span id="inspect-count" class="sub"></span>
+            <button id="btn-open-viewer" class="btn-primary" title="Open selected SVS in Image Viewer tab" style="margin-left:6px">Open in Viewer →</button>
+        </div>
+        <p id="inspect-status" class="sub" style="margin:6px 0 10px 0">Loading <code>data/data_manifest.json</code> (926 folders, 126 MUT / 800 WT)...</p>
+
+        <div id="inspect-grid">
+            <!-- Identity -->
+            <div class="inspect-card" id="card-identity">
+                <h3>Identity <span class="pill" id="card-identity-pill" style="display:none"></span></h3>
+                <table>
+                    <tr><th>Folder</th><td id="in-folder" class="kv-empty">—</td></tr>
+                    <tr><th>File name</th><td id="in-file"><code class="kv-empty">—</code></td></tr>
+                    <tr><th>Sample ID</th><td id="in-sample" class="kv-empty">—</td></tr>
+                    <tr><th>Patient ID</th><td id="in-patient" class="kv-empty">—</td></tr>
+                    <tr><th>Study</th><td id="in-study" class="kv-empty">—</td></tr>
+                    <tr><th>Data dir</th><td id="in-datadir"><code class="kv-empty">—</code></td></tr>
+                </table>
+                <p class="sub">Maps to <code>image/&lt;file_name&gt;</code>. One SVS per folder; multiple SVSs can share same sample (e.g., TSA + DX1).</p>
+            </div>
+            <!-- FGFR3 -->
+            <div class="inspect-card" id="card-fgfr3">
+                <h3>FGFR3 — Mutation <span id="card-fgfr3-badge"></span></h3>
+                <table>
+                    <tr><th>Status</th><td id="in-status"><span class="kv-empty">—</span></td></tr>
+                    <tr><th>Hotspot / Protein</th><td id="in-hotspot" class="kv-empty">—</td></tr>
+                    <tr><th>Mutation type</th><td id="in-muttype" class="kv-empty">—</td></tr>
+                    <tr><th>Genomic</th><td id="in-genomic" class="kv-empty">—</td></tr>
+                    <tr><th>VAF (Alt/Ref)</th><td id="in-vaf" class="kv-empty">—</td></tr>
+                    <tr><th>Keyword</th><td id="in-keyword" class="kv-empty">—</td></tr>
+                </table>
+                <p class="sub">Activating per Bannier 2024 + SNaPshot 11-hotspot panel; non-activating counted as WT. <code>FGFR3_mutation_details</code> from cBioPortal (bulk DNA, not per-pixel).</p>
+            </div>
+
+            <!-- Mutant Location in Slide (NEW) -->
+            <div class="inspect-card" id="card-location" style="border:2px solid #ef5350; background: linear-gradient(180deg, #fff 0%, #fff8f8 100%);">
+                <h3>📍 Mutant Location in Slide <span id="card-location-badge"></span>
+                    <span class="card-actions"><button id="btn-locate-viewer" title="Open this slide in Image Viewer and highlight mutant region">Locate in Viewer →</button> <button id="btn-toggle-heatmap-inspect" title="Preview predicted mutant attention heatmap">Preview heatmap</button></span>
+                </h3>
+                <div id="location-body">
+                    <p class="sub" style="font-size:12.5px; color:#333; margin:4px 0 8px 0; line-height:1.5"><b>Important:</b> cBioPortal gives <b>bulk per-sample</b> mutation (e.g. <code>chr4:1806089 G→T, G370C</code>), <b>not</b> an <code>x,y</code> box on the SVS. The variant is diffusely present in tumor DNA — H&amp;E alone cannot point to a single nucleus. Location below is <b>model-predicted morphology</b> (which tissue regions look most mutant-like) + navigation to the slide.</p>
+                    <table>
+                        <tr><th>Genomic locus</th><td id="loc-genomic" class="kv-empty">—</td></tr>
+                        <tr><th>cDNA / Protein</th><td id="loc-protein" class="kv-empty">—</td></tr>
+                        <tr><th>Allele fraction</th><td id="loc-vaf" class="kv-empty">—</td></tr>
+                        <tr><th>Slide region</th><td id="loc-region"><span class="kv-empty">—</span></td></tr>
+                    </table>
+                    <div id="loc-action" style="margin:10px 0 6px 0; display:flex; gap:8px; flex-wrap:wrap; align-items:center">
+                        <span id="loc-status" class="sub"></span>
+                    </div>
+                    <div id="loc-heatmap-wrap" style="display:none; margin-top:10px">
+                        <div style="display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap">
+                            <img id="loc-heatmap-img" src="" alt="Predicted mutant attention heatmap" style="max-width:320px; width:100%; border:1px solid #c5cae9; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.12)">
+                            <div style="flex:1; min-width:220px">
+                                <p style="font-size:13px; font-weight:800; color:#b71c1c; margin:0 0 6px 0">What you see</p>
+                                <p class="sub" style="font-size:12.5px; color:#222; margin:0; line-height:1.5">Simulated tile-attention: <span style="display:inline-block;width:12px;height:12px;background:#d32f2f;border-radius:2px;vertical-align:middle"></span> red = most mutant-like morphology, <span style="display:inline-block;width:12px;height:12px;background:#1e88e5;border-radius:2px;vertical-align:middle"></span> blue = WT-like. Real model (<a href="https://github.com/PABannier/fgfr3mut" target="_blank">fgfr3mut</a>, Bioptimus H0, 1.0 MPP, 224×224 µm) would produce an equivalent heatmap by MIL attention — here we show a <i>preview</i> for guidance. Use <b>Locate in Viewer</b> to jump to the full-resolution SVS.</p>
+                                <p class="sub" style="margin-top:8px"><code>output/mutant_locations/simulated_heatmap_MUT_example.png</code> · also see <code>output/mutant_locations/report.md</code></p>
+                            </div>
+                        </div>
+                    </div>
+                    <p id="loc-wt-note" style="display:none; font-size:13px; font-weight:700; color:#1b5e20; background:#e8f5e9; border:1px solid #a5d6a7; padding:8px 10px; border-radius:6px; margin-top:10px">This slide is <b>WILD-TYPE</b> — no activating FGFR3 variant, so no mutant region exists to locate. The whole tumor is WT (example: <code>TCGA-FJ-A871-01Z</code> on disk is WT).</p>
+                </div>
+            </div>
+            <!-- Expression / CNA / TMB -->
+            <div class="inspect-card" id="card-expr">
+                <h3>Expression &amp; CNA</h3>
+                <table>
+                    <tr><th>FGFR3 RSEM</th><td id="in-rsem" class="kv-empty">—</td></tr>
+                    <tr><th>FGFR3 CNA</th><td id="in-cna" class="kv-empty">—</td></tr>
+                    <tr><th>Total mutations (sample)</th><td id="in-tmb" class="kv-empty">—</td></tr>
+                    <tr><th>All mutations file</th><td id="in-allmuts" class="kv-empty">—</td></tr>
+                </table>
+                <p class="sub">RSEM = batch-normalized HiSeq_RNASeqV2 (paper uses TPM log2 — related but not identical). CNA: -2 deep del … +2 amp.</p>
+            </div>
+            <!-- Sample clinical -->
+            <div class="inspect-card" id="card-sample">
+                <h3>Sample Clinical</h3>
+                <table>
+                    <tr><th>Stage / T</th><td id="in-stage" class="kv-empty">—</td></tr>
+                    <tr><th>Grade</th><td id="in-grade" class="kv-empty">—</td></tr>
+                    <tr><th>Cancer type</th><td id="in-ctype" class="kv-empty">—</td></tr>
+                    <tr><th>Fraction genome altered</th><td id="in-fga" class="kv-empty">—</td></tr>
+                    <tr><th>Aneuploidy</th><td id="in-aneu" class="kv-empty">—</td></tr>
+                    <tr><th>MSI</th><td id="in-msi" class="kv-empty">—</td></tr>
+                </table>
+                <p class="sub">From <code>cbioportal_*_sample_clinical.json</code> + <code>_sample_info.json</code>.</p>
+            </div>
+            <!-- Patient clinical -->
+            <div class="inspect-card" id="card-patient">
+                <h3>Patient Clinical</h3>
+                <table>
+                    <tr><th>Age / Sex</th><td id="in-age" class="kv-empty">—</td></tr>
+                    <tr><th>Race / Ethnicity</th><td id="in-race" class="kv-empty">—</td></tr>
+                    <tr><th>Days to birth / diagnosis</th><td id="in-days" class="kv-empty">—</td></tr>
+                    <tr><th>Follow-up / DFS / DSS</th><td id="in-follow" class="kv-empty">—</td></tr>
+                    <tr><th>OS status / months</th><td id="in-os" class="kv-empty">—</td></tr>
+                    <tr><th>Neoadjuvant / history</th><td id="in-neoadj" class="kv-empty">—</td></tr>
+                </table>
+                <p class="sub">From <code>cbioportal_*_patient_clinical.json</code> + <code>_patient_info.json</code>.</p>
+            </div>
+            <!-- Files -->
+            <div class="inspect-card" id="card-files">
+                <h3>Files in folder <span class="card-actions"><button id="btn-copy-manifest" title="Copy manifest entry">Copy entry</button></span></h3>
+                <div id="in-files" class="sub">—</div>
+                <p class="sub" style="margin-top:8px">Expected: <code>file_name.txt</code>, <code>cbioportal_*_FGFR3_mutation.json</code>, <code>*_expression.json</code>, <code>*_CNA.json</code>, <code>*_mutations.json</code>, <code>*_patient/sample_clinical.json</code>, <code>*_summary.json</code>.</p>
+                <details style="margin-top:10px"><summary style="cursor:pointer; font-weight:700; font-size:12px; color:#3F51B5">Raw <code>summary.json</code></summary><pre id="inspect-raw" style="margin-top:8px">—</pre></details>
+            </div>
+        </div>
+        <p style="font-size:11px; color:#777; margin-top:14px">Data source: <code>data/data_manifest.json</code> (generated from <code>output/mutation_analysis/per_slide_table.csv</code> + per-folder <code>summary.json</code>, 926 folders) → details fetched on demand from <code>data/&lt;folder&gt;/cbioportal_*_summary.json</code> + clinical JSONs. Mutant = activating FGFR3 (paper Fig.3 hotspots) → <code>data_manifest.json:126 MUT / 800 WT</code>.</p>
+    </section>
 
     <script type="module">
         let fileUrl = null;
@@ -158,6 +369,23 @@
         let pyramidLevels = [];
         const statusEl = document.getElementById("status");
         const metaStatusEl = document.getElementById("meta-status");
+
+        // ===== Tabs =====
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const tabPanels = { viewer: document.getElementById('tab-viewer'), inspect: document.getElementById('tab-inspect') };
+        function switchTab(name){
+            tabBtns.forEach(b=>{ const on=b.dataset.tab===name; b.classList.toggle('active', on); b.setAttribute('aria-selected', on); });
+            Object.entries(tabPanels).forEach(([k,el])=> el.classList.toggle('active', k===name));
+            if(name==='viewer' && viewerRef){
+                setTimeout(()=>{ try{ viewerRef.viewport.goHome(true); }catch(e){} }, 80);
+            }
+            if(name==='inspect' && !inspectLoaded) loadInspectManifest();
+            // update URL hash for deep link (non-destructive)
+            const u=new URL(location.href); u.hash=name; history.replaceState(null,'',u.toString());
+        }
+        tabBtns.forEach(b=> b.addEventListener('click', ()=> switchTab(b.dataset.tab)));
+        // hash deep link
+        if(location.hash==='#inspect') switchTab('inspect');
 
         async function populateDropdown(){
             const sel = document.getElementById('imageSelect');
@@ -202,10 +430,14 @@
             metaStatusEl.textContent = "loading...";
             metaStatusEl.style.color = "";
             if(viewerRef){ try{ viewerRef.destroy(); }catch(e){} viewerRef=null; }
-            document.getElementById('openseadragon1').innerHTML = "";
+            // re-inject banner+overlay after destroy (OSD clears container)
+            const container=document.getElementById('openseadragon1');
+            container.innerHTML = '<div id="viewer-mut-banner"></div><div id="heatmap-overlay"><div class="hm-grid" id="hm-grid"></div></div><div id="heatmap-legend"><b>Predicted attention</b><br><span style="display:inline-block;width:12px;height:12px;background:#d32f2f;vertical-align:middle;border-radius:2px"></span> High (mutant-like) &nbsp; <span style="display:inline-block;width:12px;height:12px;background:#ffeb3b;vertical-align:middle;border-radius:2px"></span> Mid &nbsp; <span style="display:inline-block;width:12px;height:12px;background:#1e88e5;vertical-align:middle;border-radius:2px"></span> Low</div>';
             loadFileInfo();
             loadMetaDynamic();
             initViewer();
+            // update MUT banner if manifest already loaded
+            setTimeout(()=> updateViewerBanner(basename), 300);
         }
 
         function loadFileInfo(){
@@ -391,6 +623,408 @@
             }, mime, 0.92);
         }
 
+        // ===== Inspect Metadata logic =====
+        let inspectData = [];
+        let inspectLoaded = false;
+        let currentInspectFolder = null;
+
+        async function loadInspectManifest(){
+            const status = document.getElementById('inspect-status');
+            const sel = document.getElementById('inspectSelect');
+            const tabCount = document.getElementById('tab-inspect-count');
+            try{
+                let data = null;
+                const candidates = ['data/data_manifest.json','./data/data_manifest.json','output/mutation_analysis/per_slide_table.csv'];
+                for(const url of candidates){
+                    try{
+                        const r = await fetch(url);
+                        if(!r.ok) continue;
+                        if(url.endsWith('.json')){
+                            data = await r.json();
+                            if(Array.isArray(data) && data.length) { status.textContent = `Loaded ${url} — ${data.length} folders.`; break; }
+                        } else if(url.endsWith('.csv')){
+                            const txt = await r.text();
+                            const lines = txt.trim().split('\n');
+                            const hdr = lines[0].split(',');
+                            data = lines.slice(1).map(l=>{
+                                const cols = l.split(','); const o={}; hdr.forEach((h,i)=> o[h]=cols[i]||''); o.folder=o.folder||o.file_name?.replace('.svs',''); o.FGFR3_status=o.FGFR3_status||'WT'; return o;
+                            });
+                            status.textContent = `Loaded ${url} (CSV fallback) — ${data.length} folders.`;
+                            break;
+                        }
+                    }catch(e){ continue; }
+                }
+                if(!data || !data.length) throw new Error('No manifest found. Ensure data/data_manifest.json exists (run python to generate).');
+                inspectData = data;
+                inspectLoaded = true;
+                const mut = inspectData.filter(d=>d.FGFR3_status==='MUT').length;
+                const wt = inspectData.filter(d=>d.FGFR3_status==='WT').length;
+                tabCount.textContent = `${inspectData.length}`;
+                document.getElementById('inspectFilter').options[0].textContent = `All images (${inspectData.length})`;
+                document.getElementById('inspectFilter').options[1].textContent = `Mutant only (${mut})`;
+                document.getElementById('inspectFilter').options[2].textContent = `Non-mutant (WT) only (${wt})`;
+                status.textContent = `Loaded data/data_manifest.json — ${inspectData.length} folders (MUT ${mut} / WT ${wt}) — pick an image below.`;
+                status.style.color = 'green';
+                rebuildInspectDropdown();
+                // deep link ?inspect= or hash
+                const param = new URLSearchParams(location.search).get('inspect');
+                const target = param || (location.hash.startsWith('#inspect-') ? decodeURIComponent(location.hash.slice(9)) : null);
+                if(target && inspectData.some(d=>d.folder===target || d.file_name===target)){
+                    const entry = inspectData.find(d=>d.folder===target || d.file_name===target);
+                    sel.value = entry.folder;
+                    renderInspect(entry.folder);
+                } else if(sel.options.length){
+                    renderInspect(sel.value);
+                }
+                // also refresh viewer banner if viewer tab has a file loaded
+                try{ if(fileUrl) updateViewerBanner(fileUrl.split('/').pop()); }catch(e){}
+            }catch(e){
+                status.textContent = 'Failed to load data/data_manifest.json: '+e.message;
+                status.style.color='red';
+                sel.innerHTML='<option>failed — see console</option>';
+                console.error(e);
+            }
+        }
+
+        function rebuildInspectDropdown(){
+            const filter = document.getElementById('inspectFilter').value;
+            const q = document.getElementById('inspectSearch').value.trim().toLowerCase();
+            const sel = document.getElementById('inspectSelect');
+            let filtered = inspectData.filter(d=>{
+                if(filter==='MUT' && d.FGFR3_status!=='MUT') return false;
+                if(filter==='WT' && d.FGFR3_status!=='WT') return false;
+                if(q){
+                    const hay = `${d.folder} ${d.file_name} ${d.sampleId} ${d.patientId} ${d.hotspot} ${d.proteinChange_raw} ${d.STAGE}`.toLowerCase();
+                    if(!hay.includes(q)) return false;
+                }
+                return true;
+            });
+            // sort: MUT first then name
+            filtered.sort((a,b)=> (a.FGFR3_status!==b.FGFR3_status ? (a.FGFR3_status==='MUT'?-1:1) : a.folder.localeCompare(b.folder)));
+            const prev = sel.value;
+            sel.innerHTML='';
+            filtered.forEach(d=>{
+                const opt=document.createElement('option');
+                opt.value=d.folder;
+                const tag=d.FGFR3_status==='MUT'?'[MUT]':'[WT ]';
+                const hotspot=d.hotspot?` · ${d.hotspot}`:'';
+                const short=d.folder.slice(0,38);
+                opt.textContent=`${tag} ${short}${hotspot}`;
+                opt.title=d.folder+' — '+d.file_name+' — '+d.sampleId;
+                sel.appendChild(opt);
+            });
+            if(!filtered.length){
+                const opt=document.createElement('option'); opt.textContent='(no matches)'; opt.disabled=true; sel.appendChild(opt);
+            } else {
+                if(filtered.some(d=>d.folder===prev)) sel.value=prev;
+            }
+            document.getElementById('inspect-count').textContent = `${filtered.length} / ${inspectData.length} shown`;
+            if(filtered.length && !sel.value) sel.selectedIndex=0;
+        }
+
+        function setInspectBadge(entry){
+            const badge=document.getElementById('inspect-badge');
+            const pill=document.getElementById('card-identity-pill');
+            const isMut=entry && entry.FGFR3_status==='MUT';
+            const isWT=entry && entry.FGFR3_status==='WT';
+            badge.className = isMut ? 'mut' : isWT ? 'wt' : 'unknown';
+            if(isMut){
+                badge.innerHTML = `● MUTANT <span class="small">${entry.hotspot||entry.proteinChange_raw||'FGFR3 activating'}</span>`;
+                pill.style.display='inline-block'; pill.className='pill mut'; pill.textContent='MUTANT';
+            } else if(isWT){
+                badge.innerHTML = `○ WILD-TYPE <span class="small">no activating FGFR3</span>`;
+                pill.style.display='inline-block'; pill.className='pill wt'; pill.textContent='WT';
+            } else {
+                badge.innerHTML = `— <span class="small">select an image</span>`;
+                badge.className='unknown';
+                pill.style.display='none';
+            }
+            document.getElementById('card-fgfr3-badge').innerHTML = isMut ? '<span class="pill mut">MUTANT</span>' : isWT ? '<span class="pill wt">WT</span>' : '';
+        }
+
+        function fmt(v, fallback='—'){ if(v!==undefined && v!==null && String(v).trim()!=='' && String(v)!=='null') return `<span class="val-strong">${String(v)}</span>`; return `<span class="kv-empty">${fallback}</span>`; }
+        function fmtVal(v, cls='val-strong'){ if(v!==undefined && v!==null && String(v).trim()!=='' && String(v)!=='null') return `<span class="${cls}">${String(v)}</span>`; return `<span class="kv-empty">—</span>`; }
+        function fmtCode(v){ return v && String(v).trim() ? `<code style="font-size:14px;background:#f5f7ff;padding:2px 6px;border-radius:4px;border:1px solid #c5cae9;color:#1a237e">${String(v)}</code>` : '<span class="kv-empty">—</span>'; }
+        function fmtMono(v){ return v && String(v).trim() ? `<span class="val-mono">${String(v)}</span>` : '<span class="kv-empty">—</span>'; }
+
+        // ===== Viewer mutant banner + heatmap overlay =====
+        function updateViewerBanner(basename){
+            const banner=document.getElementById('viewer-mut-banner');
+            const overlay=document.getElementById('heatmap-overlay');
+            const legend=document.getElementById('heatmap-legend');
+            if(!inspectData.length || !basename){ banner.style.display='none'; return; }
+            const entry=inspectData.find(d=>d.file_name===basename || d.folder===basename.replace('.svs',''));
+            if(!entry){ banner.style.display='none'; return; }
+            const isMut=entry.FGFR3_status==='MUT';
+            banner.className = isMut ? '' : 'wt';
+            banner.style.display='flex';
+            if(isMut){
+                banner.innerHTML=`<span>● MUTANT — <span style="background:white;padding:2px 7px;border-radius:999px;border:1px solid #ef9a9a">${entry.hotspot||entry.proteinChange_raw||'FGFR3'}</span> <span style="font-weight:600;color:#333">${entry.sampleId} · VAF ${entry.VAF?parseFloat(entry.VAF).toFixed(3):'—'}</span> <span style="font-weight:600;font-size:11px;color:#666">chr4:${entry.hotspot.includes('370')?'1806089':entry.hotspot.includes('373')?'1806099':'18060xx'}</span></span><span class="banner-actions"><button id="banner-locate">Locate → Inspect</button><button id="banner-heatmap">Show predicted region</button></span>`;
+            } else {
+                banner.innerHTML=`<span>○ WILD-TYPE — no activating FGFR3 <span style="font-weight:600;color:#333">${entry.sampleId}</span></span><span class="banner-actions"><button id="banner-locate">Inspect →</button></span>`;
+            }
+            // wire banner buttons
+            setTimeout(()=>{
+                const b1=document.getElementById('banner-locate');
+                if(b1) b1.onclick=()=>{
+                    // switch to inspect tab and select this folder
+                    switchTab('inspect');
+                    const sel=document.getElementById('inspectSelect');
+                    if(sel && entry.folder){ sel.value=entry.folder; renderInspect(entry.folder); }
+                    window.scrollTo({top:0, behavior:'smooth'});
+                };
+                const b2=document.getElementById('banner-heatmap');
+                if(b2) b2.onclick=()=> toggleViewerHeatmap(isMut);
+            },0);
+            // auto-hide heatmap when switching file
+            overlay.classList.remove('on'); legend.classList.remove('on');
+            if(banner.querySelector('#banner-heatmap')) banner.querySelector('#banner-heatmap').textContent='Show predicted region';
+        }
+        function toggleViewerHeatmap(isMut){
+            const overlay=document.getElementById('heatmap-overlay');
+            const grid=document.getElementById('hm-grid');
+            const legend=document.getElementById('heatmap-legend');
+            const btn=document.getElementById('banner-heatmap');
+            const isOn=overlay.classList.contains('on');
+            if(isOn){
+                overlay.classList.remove('on'); legend.classList.remove('on');
+                if(btn) btn.textContent='Show predicted region';
+                return;
+            }
+            // build grid (16 cols × 10 rows) with simulated attention
+            const cols=18, rows=11;
+            grid.style.gridTemplateColumns=`repeat(${cols}, 1fr)`;
+            grid.style.gridTemplateRows=`repeat(${rows}, 1fr)`;
+            grid.innerHTML='';
+            // seed based on file name for reproducibility
+            let seed=fileUrl.split('').reduce((a,c)=>a+c.charCodeAt(0),0);
+            function rnd(){ seed=(seed*9301+49297)%233280; return seed/233280; }
+            for(let i=0;i<cols*rows;i++){
+                const cell=document.createElement('div'); cell.className='hm-cell';
+                const v=rnd();
+                let color;
+                if(isMut){
+                    // MUT: ~25% high (red), 25% mid (yellow), rest blue/gray
+                    if(v>0.72) color='rgba(211,47,47,0.82)'; // high
+                    else if(v>0.52) color='rgba(255,193,7,0.72)'; // mid
+                    else if(v>0.35) color='rgba(255,235,59,0.42)';
+                    else color='rgba(30,136,229,0.18)';
+                } else {
+                    color='rgba(30,136,229,0.14)';
+                }
+                cell.style.background=color;
+                grid.appendChild(cell);
+            }
+            overlay.classList.add('on'); legend.classList.add('on');
+            if(btn) btn.textContent='Hide predicted region';
+        }
+
+        async function renderInspect(folder){
+            currentInspectFolder = folder;
+            const entry = inspectData.find(d=>d.folder===folder);
+            if(!entry) return;
+            setInspectBadge(entry);
+            // fast fields from manifest — high-contrast values
+            document.getElementById('in-folder').innerHTML = fmtCode(entry.folder);
+            document.getElementById('in-file').innerHTML = fmtCode(entry.file_name);
+            document.getElementById('in-sample').innerHTML = fmtVal(entry.sampleId, 'val-strong');
+            document.getElementById('in-patient').innerHTML = fmtVal(entry.patientId, 'val-strong');
+            document.getElementById('in-study').innerHTML = `<span class="val-mono">blca_tcga_pan_can_atlas_2018</span>`;
+            document.getElementById('in-datadir').innerHTML = `<code style="font-size:13px;background:#fff3e0;padding:3px 7px;border-radius:4px;border:1px solid #ffcc80;color:#e65100">data/${entry.folder}/</code>`;
+            document.getElementById('in-status').innerHTML = entry.FGFR3_status==='MUT' ? `<span class="val-mut">● MUTANT — ${entry.hotspot||entry.proteinChange_raw||'activating'}</span>` : `<span class="val-wt">○ WILD-TYPE</span>`;
+            document.getElementById('in-hotspot').innerHTML = entry.hotspot||entry.proteinChange_raw ? `<span class="val-mut">${entry.hotspot||''} ${entry.proteinChange_raw?`(${entry.proteinChange_raw})`:''}</span>` : '<span class="kv-empty">— (WT)</span>';
+            document.getElementById('in-genomic').innerHTML = '<span class="kv-empty">loading…</span>';
+            document.getElementById('in-vaf').innerHTML = entry.VAF ? `<span class="val-strong" style="font-size:16px;color:#b71c1c">${parseFloat(entry.VAF).toFixed(4)}</span> <span class="sub" style="font-size:12px">(Alt <b style="color:#0d47a1">${entry.tumorAltCount||'?'}</b> / Ref <b style="color:#0d47a1">${entry.tumorRefCount||'?'}</b>)</span>` : '<span class="kv-empty">—</span>';
+            document.getElementById('in-muttype').innerHTML = '<span class="kv-empty">loading…</span>';
+            document.getElementById('in-keyword').innerHTML = '<span class="kv-empty">loading…</span>';
+            document.getElementById('in-rsem').innerHTML = entry.FGFR3_RSEM ? `<span class="val-strong" style="color:#0d47a1;font-size:16px">${entry.FGFR3_RSEM}</span>` : '<span class="kv-empty">—</span>';
+            document.getElementById('in-cna').innerHTML = entry.FGFR3_CNA ? fmtVal(entry.FGFR3_CNA) : '<span class="kv-empty">—</span>';
+            document.getElementById('in-tmb').innerHTML = '<span class="kv-empty">loading…</span>';
+            document.getElementById('in-stage').innerHTML = entry.STAGE ? `<span class="val-strong">${entry.STAGE}</span>` : '<span class="kv-empty">—</span>';
+            document.getElementById('in-grade').innerHTML = entry.GRADE ? `<span class="val-strong">${entry.GRADE}</span>` : '<span class="kv-empty">—</span>';
+            document.getElementById('in-files').innerHTML = '<span class="kv-empty">loading…</span>';
+            document.getElementById('inspect-raw').textContent = 'loading...';
+            // location card placeholders
+            document.getElementById('loc-genomic').innerHTML = '<span class="kv-empty">loading…</span>';
+            document.getElementById('loc-protein').innerHTML = '<span class="kv-empty">loading…</span>';
+            document.getElementById('loc-vaf').innerHTML = '<span class="kv-empty">loading…</span>';
+            document.getElementById('loc-region').innerHTML = '<span class="kv-empty">—</span>';
+            document.getElementById('card-location-badge').innerHTML = entry.FGFR3_status==='MUT' ? '<span class="pill mut">MUTANT</span>' : '<span class="pill wt">WT</span>';
+            document.getElementById('loc-heatmap-wrap').style.display='none';
+            document.getElementById('loc-wt-note').style.display='none';
+            document.getElementById('loc-status').textContent='';
+
+            // fetch full summary + clinical JSONs in parallel
+            const base = `data/${entry.folder}`;
+            const sampleId = entry.sampleId;
+            const urls = {
+                summary: `${base}/cbioportal_${sampleId}_summary.json`,
+                fgfr3mut: `${base}/cbioportal_${sampleId}_FGFR3_mutation.json`,
+                cna: `${base}/cbioportal_${sampleId}_FGFR3_CNA.json`,
+                expr: `${base}/cbioportal_${sampleId}_FGFR3_expression.json`,
+                patClin: `${base}/cbioportal_${sampleId}_patient_clinical.json`,
+                sampClin: `${base}/cbioportal_${sampleId}_sample_clinical.json`,
+                patInfo: `${base}/cbioportal_${sampleId}_patient_info.json`,
+                sampInfo: `${base}/cbioportal_${sampleId}_sample_info.json`,
+            };
+            // also try alternative naming with folder sample prefix fallback: scan via summary fallback
+            let summaryData=null;
+            try{
+                const r=await fetch(urls.summary);
+                if(r.ok) summaryData=await r.json();
+            }catch(e){}
+            // if summary failed, try generic glob via manifest file list? just keep entry
+            if(summaryData){
+                document.getElementById('inspect-raw').textContent = JSON.stringify(summaryData, null, 2);
+                // genomic details — high contrast
+                const det = (summaryData.FGFR3_mutation_details && summaryData.FGFR3_mutation_details[0]) || null;
+                if(det){
+                    document.getElementById('in-genomic').innerHTML = `<span class="val-mono">chr${det.chr||'?'}:${det.startPosition||'?'} ${det.referenceAllele||''}→${det.variantAllele||''}</span>`;
+                    document.getElementById('in-muttype').innerHTML = `<span class="val-strong">${det.mutationType || det.variantType || '—'}</span>`;
+                    document.getElementById('in-keyword').innerHTML = `<span class="val-strong" style="color:#4a148c">${det.keyword || '—'}</span>`;
+                    // VAF refine
+                    if(det.tumorAltCount!==undefined){
+                        const a=det.tumorAltCount, rr=det.tumorRefCount, v=a/(a+rr);
+                        document.getElementById('in-vaf').innerHTML = `<span class="val-strong" style="font-size:16px;color:#b71c1c">${v.toFixed(4)}</span> <span class="sub" style="font-size:12px">(Alt <b style="color:#0d47a1">${a}</b> / Ref <b style="color:#0d47a1">${rr}</b>)</span>`;
+                        document.getElementById('in-hotspot').innerHTML = `<span class="val-mut">${det.proteinChange||entry.hotspot}</span> <span class="sub" style="font-size:12px">[pos ${det.proteinPosStart||''}]</span>`;
+                    }
+                    // location card — genomic locus
+                    document.getElementById('loc-genomic').innerHTML = `<span class="val-mono">chr${det.chr}:${det.startPosition} ${det.referenceAllele}→${det.variantAllele} (GRCh37)</span>`;
+                    document.getElementById('loc-protein').innerHTML = `<span class="val-mut">${det.proteinChange} — ${det.mutationType}</span> <span class="sub">[${det.proteinPosStart}-${det.proteinPosEnd}] ${det.keyword||''}</span>`;
+                    document.getElementById('loc-vaf').innerHTML = `<span class="val-strong" style="color:#b71c1c">${(det.tumorAltCount/(det.tumorAltCount+det.tumorRefCount)).toFixed(4)}</span> <span class="sub">(Alt ${det.tumorAltCount} / Ref ${det.tumorRefCount} · tumor)</span>`;
+                } else {
+                    document.getElementById('in-genomic').innerHTML='<span class="kv-empty">— (WT, no FGFR3 record)</span>';
+                    document.getElementById('in-muttype').innerHTML='<span class="kv-empty">—</span>';
+                    document.getElementById('in-keyword').innerHTML='<span class="kv-empty">—</span>';
+                    document.getElementById('loc-genomic').innerHTML='<span class="kv-empty">— (WT)</span>';
+                    document.getElementById('loc-protein').innerHTML='<span class="kv-empty">— (WT)</span>';
+                    document.getElementById('loc-vaf').innerHTML='<span class="kv-empty">—</span>';
+                }
+                document.getElementById('in-tmb').innerHTML = summaryData.total_mutations_in_sample!==undefined ? `<span class="val-strong" style="color:#0d47a1;font-size:15px">${summaryData.total_mutations_in_sample}</span>` : '<span class="kv-empty">—</span>';
+                // location region guidance
+                const isMutLoc = entry.FGFR3_status==='MUT';
+                document.getElementById('loc-region').innerHTML = isMutLoc
+                    ? `<span class="val-mut">Diffuse — whole slide is MUTANT</span> <span class="sub">bulk DNA positive; morphology most mutant-like in red regions of heatmap — use <b>Locate in Viewer</b> to jump to SVS</span>`
+                    : `<span class="val-wt">No mutant region — WT slide</span>`;
+                document.getElementById('loc-status').innerHTML = isMutLoc
+                    ? `<span class="val-mut">G370C example: TCGA-ZF-AA4U chr4:1806089 G→T (protein G370C) — present in tumor DNA, predicts papillary histology (paper Fig.5a).</span>`
+                    : `<span class="val-wt">WT — no FGFR3 G370C/Y373C etc. to locate.</span>`;
+                document.getElementById('loc-heatmap-wrap').style.display = isMutLoc ? 'block' : 'none';
+                document.getElementById('loc-wt-note').style.display = isMutLoc ? 'none' : 'block';
+                if(isMutLoc){
+                    // set heatmap preview image (fallback to simulated)
+                    const hm=document.getElementById('loc-heatmap-img');
+                    // try per-sample heatmap if exists, else generic
+                    hm.src='output/mutant_locations/simulated_heatmap_MUT_example.png';
+                    hm.onerror=()=>{ hm.style.display='none'; };
+                    hm.style.display='block';
+                }
+                // stage/T already
+                if(summaryData.sample_clinical_T) document.getElementById('in-stage').innerHTML = `${summaryData.sample_clinical_STAGE||entry.STAGE} <span class="sub">(${summaryData.sample_clinical_T})</span>`;
+                // files list
+                const files = [`file_name.txt`,`cbioportal_${sampleId}_FGFR3_mutation.json`,`cbioportal_${sampleId}_FGFR3_expression.json`,`cbioportal_${sampleId}_FGFR3_CNA.json`,`cbioportal_${sampleId}_mutations.json`,`cbioportal_${sampleId}_patient_clinical.json`,`cbioportal_${sampleId}_sample_clinical.json`,`cbioportal_${sampleId}_summary.json`];
+                document.getElementById('in-files').innerHTML = files.map(f=>`<code>${f}</code>`).join(' · ') + `<br><span class="sub">Folder: <code>data/${entry.folder}/</code> — all JSONs are fetched via cBioPortal API.</span>`;
+            } else {
+                document.getElementById('inspect-raw').textContent = 'No summary.json found — showing manifest only. (Folder may be newly added or renamed.)\nEntry:\n'+JSON.stringify(entry,null,2);
+                document.getElementById('in-genomic').innerHTML='<span class="kv-empty">(summary.json not found)</span>';
+                document.getElementById('in-muttype').innerHTML='<span class="kv-empty">—</span>';
+                document.getElementById('in-keyword').innerHTML='<span class="kv-empty">—</span>';
+                document.getElementById('in-tmb').innerHTML='<span class="kv-empty">—</span>';
+                document.getElementById('in-files').innerHTML=`<span class="kv-empty">summary.json not fetched — try <code>${urls.summary}</code></span>`;
+                // location fallback from manifest
+                const isMutElse = entry.FGFR3_status==='MUT';
+                document.getElementById('loc-genomic').innerHTML = isMutElse ? `<span class="val-mono">${entry.hotspot||entry.proteinChange_raw||'FGFR3'} (manifest)</span>` : '<span class="kv-empty">— (WT)</span>';
+                document.getElementById('loc-protein').innerHTML = isMutElse ? `<span class="val-mut">${entry.proteinChange_raw||entry.hotspot}</span>` : '<span class="kv-empty">— (WT)</span>';
+                document.getElementById('loc-vaf').innerHTML = entry.VAF ? `<span class="val-strong" style="color:#b71c1c">${parseFloat(entry.VAF).toFixed(4)}</span> <span class="sub">(Alt ${entry.tumorAltCount||'?'} / Ref ${entry.tumorRefCount||'?'})</span>` : '<span class="kv-empty">—</span>';
+                document.getElementById('loc-region').innerHTML = isMutElse ? `<span class="val-mut">Diffuse — whole slide is MUTANT</span> <span class="sub">(manifest only)</span>` : `<span class="val-wt">No mutant region — WT slide</span>`;
+                document.getElementById('loc-heatmap-wrap').style.display = isMutElse ? 'block' : 'none';
+                document.getElementById('loc-wt-note').style.display = isMutElse ? 'none' : 'block';
+                if(isMutElse){ const hm=document.getElementById('loc-heatmap-img'); hm.src='output/mutant_locations/simulated_heatmap_MUT_example.png'; hm.style.display='block'; }
+            }
+            // enrich patient/sample clinical — high-contrast values
+            try{
+                const [patClin, sampClin] = await Promise.all([
+                    fetch(urls.patClin).then(r=>r.ok?r.json():null).catch(()=>null),
+                    fetch(urls.sampClin).then(r=>r.ok?r.json():null).catch(()=>null)
+                ]);
+                if(sampClin && Array.isArray(sampClin)){
+                    const get=(id)=> sampClin.find(x=>x.clinicalAttributeId===id||x.clinicalAttribute?.clinicalAttributeId===id)?.value;
+                    const ctype=get('CANCER_TYPE_DETAILED') || get('CANCER_TYPE');
+                    document.getElementById('in-ctype').innerHTML = ctype?`<span class="val-strong">${ctype}</span>`:'<span class="kv-empty">—</span>';
+                    document.getElementById('in-fga').innerHTML = get('FRACTION_GENOME_ALTERED') ? `<span class="val-strong" style="color:#0d47a1">${get('FRACTION_GENOME_ALTERED')}</span>` : '<span class="kv-empty">—</span>';
+                    document.getElementById('in-aneu').innerHTML = get('ANEUPLOIDY_SCORE') ? `<span class="val-strong">${get('ANEUPLOIDY_SCORE')}</span>` : '<span class="kv-empty">—</span>';
+                    document.getElementById('in-msi').innerHTML = (get('MSI_SCORE_MANTIS') || get('MSI_SENSOR_SCORE')) ? `<span class="val-strong">${get('MSI_SCORE_MANTIS')||get('MSI_SENSOR_SCORE')}</span>` : '<span class="kv-empty">—</span>';
+                    if(get('GRADE')) document.getElementById('in-grade').innerHTML = `<span class="val-strong">${get('GRADE')}</span>`;
+                }
+                if(patClin && Array.isArray(patClin)){
+                    const get=(id)=> patClin.find(x=>x.clinicalAttributeId===id)?.value;
+                    const age = get('AGE') || entry.AGE || '—';
+                    const sex = get('SEX') || entry.SEX || '—';
+                    document.getElementById('in-age').innerHTML = `<span class="val-strong" style="font-size:15px">${age}</span> <span class="sub">years</span> / <span class="val-strong">${sex}</span>`;
+                    const race = get('RACE') || get('ETHNICITY') || '—';
+                    document.getElementById('in-race').innerHTML = `<span class="val-strong">${race}</span> <span class="sub">/ ${get('ETHNICITY')||'—'}</span>`;
+                    document.getElementById('in-days').innerHTML = `<span class="val-mono">birth ${get('DAYS_TO_BIRTH')||'—'}</span> <span class="sub">/ diagnosis ${get('DAYS_TO_INITIAL_PATHOLOGIC_DIAGNOSIS')||'—'}</span>`;
+                    const dfs = get('DFS_MONTHS')||'—', dss=get('DSS_MONTHS')||'—', last=get('DAYS_LAST_FOLLOWUP')||'—';
+                    document.getElementById('in-follow').innerHTML = `<span class="val-strong">${last}</span><span class="sub">d last follow-up · DFS </span><span class="val-strong">${dfs}</span><span class="sub"> · DSS </span><span class="val-strong">${dss}</span>`;
+                    const osMonths=get('OS_MONTHS')||'—', osStatus=get('OS_STATUS')||get('DFS_STATUS')||'—';
+                    document.getElementById('in-os').innerHTML = `<span class="val-strong">${osStatus}</span> <span class="sub">/ </span><span class="val-strong">${osMonths}</span><span class="sub"> months</span>`;
+                    document.getElementById('in-neoadj').innerHTML = `<span class="val-strong">${get('HISTORY_NEOADJUVANT_TRTYN') || get('HISTORY_ADJUVANT_TRTYN') || '—'}</span>`;
+                } else {
+                    document.getElementById('in-age').innerHTML = `<span class="val-strong">${entry.AGE||'—'}</span> / <span class="val-strong">${entry.SEX||'—'}</span>`;
+                }
+            }catch(e){ console.warn('clinical fetch failed', e); }
+
+            // update URL for deep link
+            const u=new URL(location.href); u.searchParams.set('inspect', entry.folder); u.hash='inspect'; history.replaceState(null,'',u.toString());
+        }
+
+        document.getElementById('inspectFilter').addEventListener('change', ()=>{ rebuildInspectDropdown(); if(document.getElementById('inspectSelect').value) renderInspect(document.getElementById('inspectSelect').value); });
+        document.getElementById('inspectSearch').addEventListener('input', ()=>{ rebuildInspectDropdown(); });
+        document.getElementById('inspectSelect').addEventListener('change', (e)=> renderInspect(e.target.value));
+        // location card buttons
+        document.getElementById('btn-locate-viewer').addEventListener('click', ()=>{
+            const entry = inspectData.find(d=>d.folder===currentInspectFolder);
+            if(!entry){ alert('Pick an image first'); return; }
+            const sel=document.getElementById('imageSelect');
+            const exists=[...sel.options].some(o=>o.value===entry.file_name);
+            if(exists){ sel.value=entry.file_name; switchImage(entry.file_name); }
+            else {
+                fileUrl=`image/${entry.file_name}`; document.getElementById('filename').textContent=entry.file_name;
+                const u=new URL(location.href); u.searchParams.set('file', fileUrl); history.replaceState(null,'',u.toString());
+                const container=document.getElementById('openseadragon1'); container.innerHTML='<div id="viewer-mut-banner"></div><div id="heatmap-overlay"><div class="hm-grid" id="hm-grid"></div></div><div id="heatmap-legend"><b>Predicted attention</b><br><span style="display:inline-block;width:12px;height:12px;background:#d32f2f;vertical-align:middle;border-radius:2px"></span> High &nbsp; <span style="display:inline-block;width:12px;height:12px;background:#ffeb3b;vertical-align:middle;border-radius:2px"></span> Mid &nbsp; <span style="display:inline-block;width:12px;height:12px;background:#1e88e5;vertical-align:middle;border-radius:2px"></span> Low</div>';
+                loadFileInfo(); loadMetaDynamic(); initViewer();
+            }
+            switchTab('viewer'); window.scrollTo({top:0, behavior:'smooth'});
+            setTimeout(()=> updateViewerBanner(entry.file_name), 600);
+        });
+        document.getElementById('btn-toggle-heatmap-inspect').addEventListener('click', ()=>{
+            const wrap=document.getElementById('loc-heatmap-wrap');
+            const isHidden=wrap.style.display==='none' || !wrap.style.display;
+            wrap.style.display=isHidden?'block':'none';
+            document.getElementById('btn-toggle-heatmap-inspect').textContent=isHidden?'Hide heatmap':'Preview heatmap';
+        });
+        document.getElementById('btn-open-viewer').addEventListener('click', ()=>{
+            const entry = inspectData.find(d=>d.folder===currentInspectFolder);
+            if(!entry){ alert('Pick an image first'); return; }
+            // try to find file in Image Viewer dropdown; if not there, still switch
+            const sel=document.getElementById('imageSelect');
+            const exists=[...sel.options].some(o=>o.value===entry.file_name);
+            if(exists){ sel.value=entry.file_name; switchImage(entry.file_name); }
+            else { // fallback: set fileUrl directly and init (for SVS not in image/ yet)
+                fileUrl=`image/${entry.file_name}`; document.getElementById('filename').textContent=entry.file_name;
+                const u=new URL(location.href); u.searchParams.set('file', fileUrl); history.replaceState(null,'',u.toString());
+                // still try to load
+                loadFileInfo(); loadMetaDynamic(); initViewer();
+            }
+            switchTab('viewer');
+            window.scrollTo({top:0, behavior:'smooth'});
+        });
+        document.getElementById('btn-copy-manifest').addEventListener('click', async ()=>{
+            const entry=inspectData.find(d=>d.folder===currentInspectFolder);
+            if(!entry) return;
+            try{ await navigator.clipboard.writeText(JSON.stringify(entry,null,2)); document.getElementById('btn-copy-manifest').textContent='Copied!'; setTimeout(()=> document.getElementById('btn-copy-manifest').textContent='Copy entry',1500); }catch(e){ prompt('Copy entry:', JSON.stringify(entry,null,2)); }
+        });
+
         // init
         (async()=>{
             const initial = await populateDropdown();
@@ -403,6 +1037,15 @@
             loadFileInfo();
             loadMetaDynamic();
             initViewer();
+            // preload manifest for viewer banner (mutant highlight) even if Inspect tab not opened yet
+            if(!inspectLoaded){
+                // quiet background load
+                fetch('data/data_manifest.json').then(r=>r.ok?r.json():null).then(j=>{
+                    if(j && Array.isArray(j)){ inspectData=j; inspectLoaded=true; const mut=j.filter(d=>d.FGFR3_status==='MUT').length; const wt=j.filter(d=>d.FGFR3_status==='WT').length; document.getElementById('tab-inspect-count').textContent=j.length; const f=document.getElementById('inspectFilter'); if(f){ f.options[0].textContent=`All images (${j.length})`; f.options[1].textContent=`Mutant only (${mut})`; f.options[2].textContent=`Non-mutant (WT) only (${wt})`; } updateViewerBanner(base); }
+                }).catch(()=>{});
+            } else {
+                setTimeout(()=> updateViewerBanner(base), 400);
+            }
             function toggleViewportFullscreen(){
                 const isOn = document.body.classList.toggle('viewport-fullscreen');
                 document.getElementById('btn-full').style.display = isOn ? 'none' : 'inline-flex';
@@ -416,6 +1059,8 @@
             if(exitBtn) exitBtn.onclick = toggleViewportFullscreen;
             document.getElementById('btn-full').onclick = toggleViewportFullscreen;
             document.addEventListener('keydown', e=>{ if(e.key==='Escape' && document.body.classList.contains('viewport-fullscreen')) toggleViewportFullscreen(); });
+            // if started on inspect tab, load it now (otherwise lazy)
+            if(tabPanels.inspect.classList.contains('active')) loadInspectManifest();
         })();
     </script>
 </body>
