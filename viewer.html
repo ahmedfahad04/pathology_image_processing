@@ -66,7 +66,7 @@
         #btn-exit-panel { display: none; background: #fdd !important; border-color: #c66 !important; }
         body.viewport-fullscreen #btn-exit-panel { display: inline-block; }
         #status { color: red; margin: 10px 0; }
-        code { color: green; font-style: italic; }
+        code { color: #0d47a1; font-style: normal; }
         #container { display: flex; flex-direction: row; gap: 20px; align-items: flex-start; justify-content: flex-start; }
         #metadata { width: 420px; border: 1px solid #999; border-radius: 6px; padding: 12px 16px; background: #f9f9ff; font-size: 13px; line-height: 1.45; }
         #metadata h2 { margin: 0 0 8px 0; font-size: 16px; color: #3F51B5; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
@@ -110,10 +110,10 @@
         #inspectSelect { min-width: 380px; max-width: 520px; }
         #inspectSearch { min-width: 200px; }
         #inspect-count { margin-left: auto; font-size: 12px; color: #555; }
-        #inspect-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+        #inspect-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: stretch; }
         @media (max-width: 1100px){ #inspect-grid{ grid-template-columns: 1fr; } #openseadragon1{ width: 100%; } #container{ flex-direction: column; } #metadata{ width: 100%; } }
-        .inspect-card { border: 1px solid #9fa8da; border-radius: 10px; background: #fff; padding: 14px 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-        .inspect-card h3 { margin: 0 0 10px 0; font-size: 15px; color: #b71c1c; border-bottom: 2px solid #e8eaf6; padding-bottom: 7px; display: flex; justify-content: space-between; align-items: center; letter-spacing: 0.2px; }
+        .inspect-card { border: 1px solid #9fa8da; border-radius: 10px; background: #fff; padding: 14px 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: flex; flex-direction: column; height: 100%; box-sizing: border-box; }
+        .inspect-card h3 { margin: 0 0 10px 0; font-size: 15px; color: #1a237e; border-bottom: 2px solid #e8eaf6; border-left: 4px solid #3F51B5; padding: 0 0 7px 10px; display: flex; justify-content: space-between; align-items: center; letter-spacing: 0.2px; }
         .inspect-card h3 .card-actions { display: flex; gap: 6px; }
         .inspect-card h3 .card-actions button { font-size: 12px; padding: 4px 10px; border: 1px solid #7986cb; border-radius: 6px; background: #e8eaf6; color: #283593; cursor: pointer; font-weight: 700; }
         .inspect-card h3 .card-actions button:hover { background: #c5cae9; }
@@ -125,7 +125,7 @@
         .inspect-card td .val-strong { color: #0d47a1; font-weight: 800; }
         .inspect-card td .val-mono { font-family: monospace; font-size: 14px; background: #f5f7ff; padding: 2px 6px; border-radius: 4px; border: 1px solid #c5cae9; color: #1a237e; }
         .inspect-card .sub { color: #444; font-size: 12px; margin-top: 8px; line-height: 1.4; }
-        .inspect-card .kv-empty { color: #9a9a9a; font-weight: 600; font-style: italic; font-size: 13px; }
+        .inspect-card .kv-empty { color: #8a8f98; font-weight: 600; font-style: normal; font-size: 13px; }
         #inspect-raw { max-height: 440px; overflow: auto; background: #f8f9ff; border: 1px solid #c5cae9; border-radius: 8px; padding: 10px; font-size: 12.5px; white-space: pre-wrap; word-break: break-all; color: #1a237e; line-height: 1.45; }
         /* Mutant location helpers */
         #viewer-mut-banner { position: absolute; top: 8px; left: 8px; right: 8px; z-index: 5; display: none; align-items: center; justify-content: space-between; gap: 10px; background: linear-gradient(90deg, #ffebee 0%, #fff3e0 100%); border: 2px solid #ef5350; border-radius: 8px; padding: 8px 12px; font-size: 13px; font-weight: 800; color: #b71c1c; box-shadow: 0 2px 8px rgba(0,0,0,0.18); }
@@ -314,9 +314,9 @@
                 <table>
                     <tr><th>In paper experiments</th><td id="in-paper-flags" class="kv-empty">—</td></tr>
                     <tr><th>DX review / exclusion</th><td id="in-paper-dxrev" class="kv-empty">—</td></tr>
-                    <tr><th>FGFR3 (paper file)</th><td id="in-paper-fgfr3" class="kv-empty">—</td></tr>
-                    <tr><th>AI score / prediction</th><td id="in-paper-ai" class="kv-empty">—</td></tr>
-                    <tr><th>Pathologist judgement</th><td id="in-paper-path" class="kv-empty">—</td></tr>
+                    <tr><th>FGFR3 — ground truth</th><td id="in-paper-fgfr3" class="kv-empty">—</td></tr>
+                    <tr><th>AI score / prediction (guess)</th><td id="in-paper-ai" class="kv-empty">—</td></tr>
+                    <tr><th>Pathologist judgement (guess)</th><td id="in-paper-path" class="kv-empty">—</td></tr>
                     <tr><th>Histology (4 features)</th><td id="in-paper-histo" class="kv-empty">—</td></tr>
                     <tr><th>Loeffler clinical</th><td id="in-paper-loef" class="kv-empty">—</td></tr>
                 </table>
@@ -753,6 +753,17 @@
             }
         }
 
+        function inspectMatches(d, q){
+            // Partial, multi-token match: every token must appear somewhere in the
+            // searchable fields (order-independent, separators ignored), so
+            // "A871 DX5", "TCGA_FJ_A871" or a pasted full file name all match.
+            if(!q) return true;
+            const hay = `${d.folder||''} ${d.file_name||''} ${d.sampleId||''} ${d.patientId||''} ${d.FGFR3_status||''} ${d.hotspot||''} ${d.proteinChange_raw||''} ${d.STAGE||''} ${d.GRADE||''}`.toLowerCase();
+            const tokens = q.toLowerCase().split(/[\s\-_.]+/).filter(t=>t.length>0);
+            if(!tokens.length) return true;
+            return tokens.every(t=>hay.includes(t));
+        }
+
         function rebuildInspectDropdown(){
             const filter = document.getElementById('inspectFilter').value;
             const q = document.getElementById('inspectSearch').value.trim().toLowerCase();
@@ -761,10 +772,7 @@
                 if(filter==='MUT' && d.FGFR3_status!=='MUT') return false;
                 if(filter==='WT' && d.FGFR3_status!=='WT') return false;
                 if(paperOnly && !paperFileSet.has(d.file_name)) return false;
-                if(q){
-                    const hay = `${d.folder} ${d.file_name} ${d.sampleId} ${d.patientId} ${d.hotspot} ${d.proteinChange_raw} ${d.STAGE}`.toLowerCase();
-                    if(!hay.includes(q)) return false;
-                }
+                if(!inspectMatches(d, q)) return false;
                 return true;
             });
             // sort: MUT first then name
@@ -920,17 +928,44 @@
             set('in-paper-fgfr3', p.fgfr3_paper
                 ? (String(p.fgfr3_paper).toUpperCase()==='WT'
                     ? '<span class="val-wt">○ WT</span>'
-                    : `<span class="val-mut">● ${p.fgfr3_paper}</span>`) + ` <span class="sub">(${p.mutation_sample||'—'})</span>`
+                    : `<span class="val-mut">● ${p.fgfr3_paper}</span>`) + ` <span class="sub">(${p.mutation_sample||'—'})</span> <span class="pill" style="background:#e3f2fd;color:#0d47a1;border-color:#90caf9">ground truth · DNA sequencing</span>`
                 : empty);
+            // ground truth in wt/mut terms; every guess below is judged against it
+            const gt = p.fgfr3_paper ? (String(p.fgfr3_paper).toUpperCase()==='WT' ? 'wt' : 'mut') : null;
+            const aiGuess = p.ai_classification ? String(p.ai_classification).toLowerCase() : null;
             if(p.in_loeffler && (p.ai_score!==undefined && p.ai_score!==null)){
                 const ai = parseFloat(p.ai_score);
-                const cls = String(p.ai_classification||'').toLowerCase()==='mut' ? 'val-mut' : 'val-wt';
-                set('in-paper-ai', `<span class="val-strong" style="font-size:16px;color:#e65100">${ai.toFixed(4)}</span> → <span class="${cls}">${p.ai_classification||'—'}</span> <span class="sub">(DL call on tissue slide)</span>`);
+                const cls = aiGuess==='mut' ? 'val-mut' : 'val-wt';
+                let verdict = '';
+                if(gt && (aiGuess==='wt' || aiGuess==='mut')){
+                    verdict = aiGuess===gt
+                        ? ' <span class="pill" style="background:#e8f5e9;color:#1b5e20;border-color:#a5d6a7">✓ matches ground truth</span>'
+                        : ' <span class="pill" style="background:#fde8e8;color:#b71c1c;border-color:#ef9a9a">✖ PREDICTION WRONG</span>';
+                }
+                set('in-paper-ai', `<span class="val-strong" style="font-size:16px;color:#e65100">${ai.toFixed(4)}</span> → <span class="${cls}">${p.ai_classification||'—'}</span>${verdict} <span class="sub">(Loeffler-AI guess on tissue slide — not the Bannier model)</span>`);
             } else set('in-paper-ai', empty);
-            set('in-paper-path', p.pathologist_judgement ? `<span class="val-strong">${p.pathologist_judgement}</span>` : empty);
-            const h = [['papillary',p.papillary_morphology],['irregular nuclei',p.irregular_nuclei],['perinuclear clearing',p.perinuclear_clearing],['distinct borders',p.distinct_cell_borders]]
-                .filter(([,v])=> v!==null && v!==undefined).map(([k,v])=> `${k}: <b>${v}</b>`).join(' · ');
-            set('in-paper-histo', h ? `<span style="font-size:13px">${h}</span>` : empty);
+            if(p.pathologist_judgement){
+                const hg = String(p.pathologist_judgement).toLowerCase();
+                let verdict = '';
+                if(gt && (hg==='wt' || hg==='mut')){
+                    verdict = hg===gt
+                        ? ' <span class="pill" style="background:#e8f5e9;color:#1b5e20;border-color:#a5d6a7">✓ matches ground truth</span>'
+                        : ' <span class="pill" style="background:#fde8e8;color:#b71c1c;border-color:#ef9a9a">✖ HUMAN WRONG</span>';
+                }
+                set('in-paper-path', `<span class="val-strong">${p.pathologist_judgement}</span>${verdict} <span class="sub">(human guess from H&amp;E morphology)</span>`);
+            } else set('in-paper-path', empty);
+            const hItems = [['Papillary morphology',p.papillary_morphology],['Irregular nuclei',p.irregular_nuclei],['Perinuclear clearing',p.perinuclear_clearing],['Distinct cell borders',p.distinct_cell_borders]]
+                .filter(([,v])=> v!==null && v!==undefined);
+            const hAns = (v)=>{
+                const pos = String(v).toLowerCase()==='positive';
+                const style = pos
+                    ? 'background:#fff3e0;color:#e65100;border:1px solid #ffcc80'
+                    : 'background:#f5f5f5;color:#555;border:1px solid #ddd';
+                return `<span style="display:inline-block;min-width:70px;text-align:center;padding:1px 10px;border-radius:10px;font-weight:800;font-size:12px;${style}">${v}</span>`;
+            };
+            set('in-paper-histo', hItems.length
+                ? `<ul style="margin:0;padding:0;list-style:none">${hItems.map(([k,v])=>`<li style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:3px 0;border-bottom:1px dotted #e0e0e0"><span style="font-size:13px;color:#333">•&nbsp; ${k}</span>${hAns(v)}</li>`).join('')}</ul>`
+                : empty);
             const loef = [p.age?`age <b>${p.age}</b>`:'', p.gender?`<b>${p.gender}</b>`:'', p.pT_stage?`pT <b>${p.pT_stage}</b>`:'',
                 p.grade_2004?`<b>${p.grade_2004}</b>`:'', p.nodal_status?`N <b>${p.nodal_status}</b>`:'',
                 p.molecular_subtype?`mol <b>${p.molecular_subtype}</b>`:'', p.histological_subtype?`<b>${p.histological_subtype}</b>`:'',
@@ -1096,7 +1131,13 @@
             if(sel.value) renderInspect(sel.value);
             else if(sel.options.length && !sel.options[0].disabled){ sel.selectedIndex=0; renderInspect(sel.value); }
         });
-        document.getElementById('inspectSearch').addEventListener('input', ()=>{ rebuildInspectDropdown(); });
+        document.getElementById('inspectSearch').addEventListener('input', ()=>{
+            const sel = document.getElementById('inspectSelect');
+            const before = sel.value;
+            rebuildInspectDropdown();
+            // follow the dropdown: render only if the selection actually changed
+            if(sel.value && sel.value!==before) renderInspect(sel.value);
+        });
         document.getElementById('inspectSelect').addEventListener('change', (e)=> renderInspect(e.target.value));
         // location card buttons
         document.getElementById('btn-locate-viewer').addEventListener('click', ()=>{
