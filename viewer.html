@@ -145,6 +145,18 @@
         .btn-primary { padding: 7px 12px; border: 1px solid #3F51B5; border-radius: 6px; background: #3F51B5; color: white; cursor: pointer; font-weight: 700; font-family: 'Open Sans', sans-serif; }
         .btn-primary:hover { background: #303f9f; }
         .btn-secondary { padding: 6px 10px; border: 1px solid #888; border-radius: 6px; background: white; cursor: pointer; font-family: 'Open Sans', sans-serif; }
+        /* cross-tab navigation buttons: icon + label aligned */
+        #btn-goto-inspect, #btn-open-viewer, #btn-locate-viewer, #banner-locate {
+            display: inline-flex; align-items: center; gap: 7px;
+        }
+        #btn-goto-inspect svg, #btn-open-viewer svg, #btn-locate-viewer svg, #banner-locate svg { flex-shrink: 0; }
+        /* Inspect Metadata jump button: indigo to match the Inspect tab theme */
+        #btn-goto-inspect {
+            background: #3F51B5; border: 1px solid #3F51B5; color: #fff;
+            font-weight: 700; padding: 7px 14px; border-radius: 6px; cursor: pointer;
+            font-family: 'Open Sans', sans-serif; box-shadow: 0 2px 5px rgba(63,81,181,0.35);
+        }
+        #btn-goto-inspect:hover { background: #303f9f; border-color: #303f9f; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/openseadragon@4.1.1/build/openseadragon/openseadragon.js"></script>
     <script type="module" crossorigin="anonymous" src="https://cdn.jsdelivr.net/gh/episphere/GeoTIFFTileSource-JPEG2k/GeoTIFFTileSource.js"></script>
@@ -169,6 +181,7 @@
         <div id="top-bar">
             <label for="imageSelect"><b>Image:</b></label>
             <select id="imageSelect"><option>loading...</option></select>
+            <button id="btn-goto-inspect" title="Open this image in the Inspect Metadata tab">Inspect Metadata <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="12" x2="20" y2="12"/><polyline points="13 5 20 12 13 19"/></svg></button>
         </div>
         <p>File: <code id="filename">—</code> — <code id="filesize">fetching...</code></p>
         <p id="status">Loading image... please wait (large file)</p>
@@ -257,7 +270,7 @@
                 <ul style="margin:0 0 0 18px;padding:0;color:#1b3329;font-size:13px;line-height:1.65;font-weight:500">
                     <li><b>We HAVE:</b> for every image, whether it is mutant or normal, which spelling mistake it is, and basic patient info (like stage, age) — all saved in <code>data/</code>.</li>
                     <li><b>We DON'T have:</b> a box or coloured spot inside the image that says "mutant is here". No file tells the exact pixels.</li>
-                    <li><b>What you can do here at most:</b> browse the list, filter mutant / normal, see the details, and click <b>Locate in Viewer →</b> to open the full slide. Remember: if a slide is called mutant, <b>the whole slide counts as mutant</b> — the mistake is in the DNA, not in one visible dot.</li>
+                    <li><b>What you can do here at most:</b> browse the list, filter mutant / normal, see the details, and click <b>Locate in Viewer <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><line x1="4" y1="12" x2="20" y2="12"/><polyline points="13 5 20 12 13 19"/></svg></b> to open the full slide. Remember: if a slide is called mutant, <b>the whole slide counts as mutant</b> — the mistake is in the DNA, not in one visible dot.</li>
                 </ul>
             </div>
         </div>
@@ -276,7 +289,7 @@
             <label for="inspectSelect"><b>Image:</b></label>
             <select id="inspectSelect"><option>loading manifest...</option></select>
             <span id="inspect-count" class="sub"></span>
-            <button id="btn-open-viewer" class="btn-primary" title="Open selected SVS in Image Viewer tab" style="margin-left:6px">Open in Viewer →</button>
+            <button id="btn-open-viewer" class="btn-primary" title="Open selected SVS in Image Viewer tab" style="margin-left:6px">Open in Viewer <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="12" x2="20" y2="12"/><polyline points="13 5 20 12 13 19"/></svg></button>
         </div>
         <p id="inspect-status" class="sub" style="margin:6px 0 10px 0">Loading <code>data/data_manifest.json</code> (926 folders, 126 MUT / 800 WT)...</p>
 
@@ -325,7 +338,7 @@
             <!-- Mutant Location in Slide (NEW) -->
             <div class="inspect-card" id="card-location" style="border:2px solid #ef5350; background: linear-gradient(180deg, #fff 0%, #fff8f8 100%);">
                 <h3>📍 Mutant Location in Slide <span id="card-location-badge"></span>
-                    <span class="card-actions"><button id="btn-locate-viewer" title="Open this slide in Image Viewer and highlight mutant region">Locate in Viewer →</button></span>
+                    <span class="card-actions"><button id="btn-locate-viewer" title="Open this slide in Image Viewer and highlight mutant region">Locate in Viewer <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="12" x2="20" y2="12"/><polyline points="13 5 20 12 13 19"/></svg></button></span>
                 </h3>
                 <div id="location-body">
                     <p class="sub" style="font-size:12.5px; color:#333; margin:4px 0 8px 0; line-height:1.5"><b>Important:</b> cBioPortal gives <b>bulk per-sample</b> mutation (e.g. <code>chr4:1806089 G→T, G370C</code>), <b>not</b> an <code>x,y</code> box on the SVS. The variant is diffusely present in tumor DNA — H&amp;E alone cannot point to a single nucleus. Location below is <b>model-predicted morphology</b> (which tissue regions look most mutant-like) + navigation to the slide.</p>
@@ -837,9 +850,9 @@
             banner.className = isMut ? '' : 'wt';
             banner.style.display='flex';
             if(isMut){
-                banner.innerHTML=`<span>● MUTANT — <span style="background:white;padding:2px 7px;border-radius:999px;border:1px solid #ef9a9a">${entry.hotspot||entry.proteinChange_raw||'FGFR3'}</span> <span style="font-weight:600;color:#333">${entry.sampleId} · VAF ${entry.VAF?parseFloat(entry.VAF).toFixed(3):'—'}</span> <span style="font-weight:600;font-size:11px;color:#666">chr4:${entry.hotspot.includes('370')?'1806089':entry.hotspot.includes('373')?'1806099':'18060xx'}</span></span><span class="banner-actions"><button id="banner-locate">Locate → Inspect</button><button id="banner-heatmap">Show predicted region</button></span>`;
+                banner.innerHTML=`<span>● MUTANT — <span style="background:white;padding:2px 7px;border-radius:999px;border:1px solid #ef9a9a">${entry.hotspot||entry.proteinChange_raw||'FGFR3'}</span> <span style="font-weight:600;color:#333">${entry.sampleId} · VAF ${entry.VAF?parseFloat(entry.VAF).toFixed(3):'—'}</span> <span style="font-weight:600;font-size:11px;color:#666">chr4:${entry.hotspot.includes('370')?'1806089':entry.hotspot.includes('373')?'1806099':'18060xx'}</span></span><span class="banner-actions"><button id="banner-locate">Locate in Inspect <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="12" x2="20" y2="12"/><polyline points="13 5 20 12 13 19"/></svg></button><button id="banner-heatmap">Show predicted region</button></span>`;
             } else {
-                banner.innerHTML=`<span>○ WILD-TYPE — no activating FGFR3 <span style="font-weight:600;color:#333">${entry.sampleId}</span></span><span class="banner-actions"><button id="banner-locate">Inspect →</button></span>`;
+                banner.innerHTML=`<span>○ WILD-TYPE — no activating FGFR3 <span style="font-weight:600;color:#333">${entry.sampleId}</span></span><span class="banner-actions"><button id="banner-locate">Inspect <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="12" x2="20" y2="12"/><polyline points="13 5 20 12 13 19"/></svg></button></span>`;
             }
             // wire banner buttons
             setTimeout(()=>{
@@ -1211,6 +1224,28 @@
             const exitBtn = document.getElementById('btn-exit-panel');
             if(exitBtn) exitBtn.onclick = toggleViewportFullscreen;
             document.getElementById('btn-full').onclick = toggleViewportFullscreen;
+            document.getElementById('btn-goto-inspect').onclick = async ()=>{
+                const base = (fileUrl||'').split('/').pop();
+                switchTab('inspect');
+                if(!inspectLoaded) await loadInspectManifest();
+                const entry = inspectData.find(d=>d.file_name===base);
+                const sel = document.getElementById('inspectSelect');
+                const paperChk = document.getElementById('inspectPaperOnly');
+                // make sure this file is visible: clear search, and drop the
+                // paper-only filter if it hides the current image
+                document.getElementById('inspectSearch').value = '';
+                if(entry && paperOnly && !paperFileSet.has(entry.file_name)){
+                    paperOnly = false;
+                    if(paperChk) paperChk.checked = false;
+                    updateInspectFilterCounts();
+                }
+                rebuildInspectDropdown();
+                if(entry && [...sel.options].some(o=>o.value===entry.folder)){
+                    sel.value = entry.folder;
+                    renderInspect(entry.folder);
+                }
+                window.scrollTo({top:0, behavior:'smooth'});
+            };
             document.addEventListener('keydown', e=>{ if(e.key==='Escape' && document.body.classList.contains('viewport-fullscreen')) toggleViewportFullscreen(); });
             // if started on inspect tab, load it now (otherwise lazy)
             if(tabPanels.inspect.classList.contains('active')) loadInspectManifest();
