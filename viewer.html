@@ -270,6 +270,7 @@
                 <option value="MUT">Mutant only</option>
                 <option value="WT">Non-mutant (WT) only</option>
             </select>
+            <label for="inspectPaperOnly" title="Restrict to TCGA DX slides used in Bannier et al. 2024 experiments (MIBC-379 + Loeffler-391, both MUT and WT)" style="display:inline-flex;align-items:center;gap:6px;background:#fff8e1;border:1px solid #ffcc80;border-radius:6px;padding:6px 10px;cursor:pointer"><input type="checkbox" id="inspectPaperOnly" style="width:16px;height:16px;accent-color:#e65100"><b>paper only</b><span class="sub" id="paper-only-count">…</span></label>
             <label for="inspectSearch"><b>Search:</b></label>
             <input id="inspectSearch" type="search" placeholder="folder / sample / patient / hotspot" autocomplete="off">
             <label for="inspectSelect"><b>Image:</b></label>
@@ -307,6 +308,20 @@
                 <p class="sub">Activating per Bannier 2024 + SNaPshot 11-hotspot panel; non-activating counted as WT. <code>FGFR3_mutation_details</code> from cBioPortal (bulk DNA, not per-pixel).</p>
             </div>
 
+            <!-- Paper — Bannier 2024 (NEW) -->
+            <div class="inspect-card" id="card-paper" style="border:2px solid #ff9800; background: linear-gradient(180deg, #fff 0%, #fffdf5 100%);">
+                <h3>📄 Paper — Bannier 2024 <span id="card-paper-badge"></span></h3>
+                <table>
+                    <tr><th>In paper experiments</th><td id="in-paper-flags" class="kv-empty">—</td></tr>
+                    <tr><th>DX review / exclusion</th><td id="in-paper-dxrev" class="kv-empty">—</td></tr>
+                    <tr><th>FGFR3 (paper file)</th><td id="in-paper-fgfr3" class="kv-empty">—</td></tr>
+                    <tr><th>AI score / prediction</th><td id="in-paper-ai" class="kv-empty">—</td></tr>
+                    <tr><th>Pathologist judgement</th><td id="in-paper-path" class="kv-empty">—</td></tr>
+                    <tr><th>Histology (4 features)</th><td id="in-paper-histo" class="kv-empty">—</td></tr>
+                    <tr><th>Loeffler clinical</th><td id="in-paper-loef" class="kv-empty">—</td></tr>
+                </table>
+                <p class="sub">From <code>output/paper/</code>: <code>filtered_slides_tcga.xlsx</code> (MIBC review) + <code>mutations_…_cbioportal.txt</code> (FGFR3) + <code>loeffler_tcga.xlsx</code> (AI score, DL prediction, pathologist call, 4 histology features). AI score = model probability of FGFR3-mutant; prediction <code>mut/wt</code> is the paper's DL call on the tissue slide. “—” = patient not in that paper file.</p>
+            </div>
             <!-- Mutant Location in Slide (NEW) -->
             <div class="inspect-card" id="card-location" style="border:2px solid #ef5350; background: linear-gradient(180deg, #fff 0%, #fff8f8 100%);">
                 <h3>📍 Mutant Location in Slide <span id="card-location-badge"></span>
@@ -638,6 +653,48 @@
         let inspectData = [];
         let inspectLoaded = false;
         let currentInspectFolder = null;
+        // Paper (Bannier 2024) lookup: patients dict + set of paper DX file_names
+        let paperLookup = null;   // {meta, patients:{pid:{...}}, paper_dx_files:[...]}
+        let paperFileSet = new Set();
+        let paperOnly = false;
+
+        async function loadPaperLookup(){
+            if(paperLookup) return paperLookup;
+            const candidates = ['output/paper/paper_lookup.json','./output/paper/paper_lookup.json'];
+            for(const url of candidates){
+                try{
+                    const r = await fetch(url);
+                    if(!r.ok) continue;
+                    paperLookup = await r.json();
+                    paperFileSet = new Set(paperLookup.paper_dx_files || []);
+                    const lbl = document.getElementById('paper-only-count');
+                    if(lbl) lbl.textContent = `(${(paperLookup.paper_dx_files||[]).length} DX)`;
+                    return paperLookup;
+                }catch(e){ continue; }
+            }
+            const lbl = document.getElementById('paper-only-count');
+            if(lbl) lbl.textContent = '(unavailable)';
+            return null;
+        }
+
+        function updateInspectFilterCounts(){
+            const sel = document.getElementById('inspectFilter');
+            if(!sel || !inspectData.length) return;
+            if(paperOnly && paperFileSet.size){
+                const paper = inspectData.filter(d=>paperFileSet.has(d.file_name));
+                const mut = paper.filter(d=>d.FGFR3_status==='MUT').length;
+                const wt = paper.filter(d=>d.FGFR3_status==='WT').length;
+                sel.options[0].textContent = `All paper images (${paper.length})`;
+                sel.options[1].textContent = `Mutant only (${mut})`;
+                sel.options[2].textContent = `Non-mutant (WT) only (${wt})`;
+            } else {
+                const mut = inspectData.filter(d=>d.FGFR3_status==='MUT').length;
+                const wt = inspectData.filter(d=>d.FGFR3_status==='WT').length;
+                sel.options[0].textContent = `All images (${inspectData.length})`;
+                sel.options[1].textContent = `Mutant only (${mut})`;
+                sel.options[2].textContent = `Non-mutant (WT) only (${wt})`;
+            }
+        }
 
         async function loadInspectManifest(){
             const status = document.getElementById('inspect-status');
@@ -668,12 +725,11 @@
                 if(!data || !data.length) throw new Error('No manifest found. Ensure data/data_manifest.json exists (run python to generate).');
                 inspectData = data;
                 inspectLoaded = true;
+                await loadPaperLookup();
                 const mut = inspectData.filter(d=>d.FGFR3_status==='MUT').length;
                 const wt = inspectData.filter(d=>d.FGFR3_status==='WT').length;
                 tabCount.textContent = `${inspectData.length}`;
-                document.getElementById('inspectFilter').options[0].textContent = `All images (${inspectData.length})`;
-                document.getElementById('inspectFilter').options[1].textContent = `Mutant only (${mut})`;
-                document.getElementById('inspectFilter').options[2].textContent = `Non-mutant (WT) only (${wt})`;
+                updateInspectFilterCounts();
                 status.textContent = `Loaded data/data_manifest.json — ${inspectData.length} folders (MUT ${mut} / WT ${wt}) — pick an image below.`;
                 status.style.color = 'green';
                 rebuildInspectDropdown();
@@ -704,6 +760,7 @@
             let filtered = inspectData.filter(d=>{
                 if(filter==='MUT' && d.FGFR3_status!=='MUT') return false;
                 if(filter==='WT' && d.FGFR3_status!=='WT') return false;
+                if(paperOnly && !paperFileSet.has(d.file_name)) return false;
                 if(q){
                     const hay = `${d.folder} ${d.file_name} ${d.sampleId} ${d.patientId} ${d.hotspot} ${d.proteinChange_raw} ${d.STAGE}`.toLowerCase();
                     if(!hay.includes(q)) return false;
@@ -729,7 +786,9 @@
             } else {
                 if(filtered.some(d=>d.folder===prev)) sel.value=prev;
             }
-            document.getElementById('inspect-count').textContent = `${filtered.length} / ${inspectData.length} shown`;
+            document.getElementById('inspect-count').textContent = paperOnly
+                ? `${filtered.length} / ${paperFileSet.size} paper DX shown`
+                : `${filtered.length} / ${inspectData.length} shown`;
             if(filtered.length && !sel.value) sel.selectedIndex=0;
         }
 
@@ -830,11 +889,61 @@
             if(btn) btn.textContent='Hide predicted region';
         }
 
+        function renderPaperCard(entry){
+            // Paper card reads output/paper/* via paper_lookup.json (patient-level).
+            const badge = document.getElementById('card-paper-badge');
+            const set = (id, html)=>{ document.getElementById(id).innerHTML = html; };
+            const empty = '<span class="kv-empty">—</span>';
+            if(!paperLookup){
+                badge.innerHTML = '<span class="pill" style="background:#eee;color:#666;border-color:#ccc">lookup not loaded</span>';
+                ['in-paper-flags','in-paper-dxrev','in-paper-fgfr3','in-paper-ai','in-paper-path','in-paper-histo','in-paper-loef'].forEach(id=> set(id, empty));
+                return;
+            }
+            const p = (paperLookup.patients || {})[entry.patientId];
+            const inPaper = paperFileSet.has(entry.file_name);
+            badge.innerHTML = inPaper
+                ? '<span class="pill" style="background:#fff3e0;color:#e65100;border-color:#ffcc80">IN PAPER · DX</span>'
+                : '<span class="pill" style="background:#eceff1;color:#666;border-color:#ccc">not a paper DX slide</span>';
+            if(!p){
+                set('in-paper-flags', inPaper ? '<span class="val-strong">paper DX slide</span> <span class="sub">(patient missing from lookup — see console)</span>' : '<span class="kv-empty">patient not in output/paper files</span>');
+                ['in-paper-dxrev','in-paper-fgfr3','in-paper-ai','in-paper-path','in-paper-histo','in-paper-loef'].forEach(id=> set(id, empty));
+                return;
+            }
+            const flags = [];
+            if(p.in_mibc_experiment) flags.push('<span class="val-strong">MIBC-379 ✓</span>');
+            if(p.in_loeffler_experiment) flags.push('<span class="val-strong">Loeffler-391 ✓</span>');
+            set('in-paper-flags', (flags.length ? flags.join(' · ') : '<span class="kv-empty">in lookup, neither experiment</span>')
+                + (p.is_mibc ? ' <span class="sub">· MIBC review</span>' : ' <span class="sub">· non-MIBC review</span>'));
+            set('in-paper-dxrev', p.dx_rev_summary
+                ? `<span class="val-strong">${p.dx_rev_summary}</span> <span class="sub">(DX: ${p.dx_rev||'—'} · cryo ${p.cryo_summary||'—'} · ${p.exclusion_summary||'—'})</span>`
+                : empty);
+            set('in-paper-fgfr3', p.fgfr3_paper
+                ? (String(p.fgfr3_paper).toUpperCase()==='WT'
+                    ? '<span class="val-wt">○ WT</span>'
+                    : `<span class="val-mut">● ${p.fgfr3_paper}</span>`) + ` <span class="sub">(${p.mutation_sample||'—'})</span>`
+                : empty);
+            if(p.in_loeffler && (p.ai_score!==undefined && p.ai_score!==null)){
+                const ai = parseFloat(p.ai_score);
+                const cls = String(p.ai_classification||'').toLowerCase()==='mut' ? 'val-mut' : 'val-wt';
+                set('in-paper-ai', `<span class="val-strong" style="font-size:16px;color:#e65100">${ai.toFixed(4)}</span> → <span class="${cls}">${p.ai_classification||'—'}</span> <span class="sub">(DL call on tissue slide)</span>`);
+            } else set('in-paper-ai', empty);
+            set('in-paper-path', p.pathologist_judgement ? `<span class="val-strong">${p.pathologist_judgement}</span>` : empty);
+            const h = [['papillary',p.papillary_morphology],['irregular nuclei',p.irregular_nuclei],['perinuclear clearing',p.perinuclear_clearing],['distinct borders',p.distinct_cell_borders]]
+                .filter(([,v])=> v!==null && v!==undefined).map(([k,v])=> `${k}: <b>${v}</b>`).join(' · ');
+            set('in-paper-histo', h ? `<span style="font-size:13px">${h}</span>` : empty);
+            const loef = [p.age?`age <b>${p.age}</b>`:'', p.gender?`<b>${p.gender}</b>`:'', p.pT_stage?`pT <b>${p.pT_stage}</b>`:'',
+                p.grade_2004?`<b>${p.grade_2004}</b>`:'', p.nodal_status?`N <b>${p.nodal_status}</b>`:'',
+                p.molecular_subtype?`mol <b>${p.molecular_subtype}</b>`:'', p.histological_subtype?`<b>${p.histological_subtype}</b>`:'',
+                p.sample_type?`<b>${p.sample_type}</b>`:''].filter(Boolean).join(' · ');
+            set('in-paper-loef', p.in_loeffler ? (loef||'<span class="kv-empty">in loeffler file, fields empty</span>') : empty);
+        }
+
         async function renderInspect(folder){
             currentInspectFolder = folder;
             const entry = inspectData.find(d=>d.folder===folder);
             if(!entry) return;
             setInspectBadge(entry);
+            renderPaperCard(entry);
             // fast fields from manifest — high-contrast values
             document.getElementById('in-folder').innerHTML = fmtCode(entry.folder);
             document.getElementById('in-file').innerHTML = fmtCode(entry.file_name);
@@ -978,6 +1087,15 @@
         }
 
         document.getElementById('inspectFilter').addEventListener('change', ()=>{ rebuildInspectDropdown(); if(document.getElementById('inspectSelect').value) renderInspect(document.getElementById('inspectSelect').value); });
+        document.getElementById('inspectPaperOnly').addEventListener('change', async (e)=>{
+            paperOnly = e.target.checked;
+            if(paperOnly) await loadPaperLookup();
+            updateInspectFilterCounts();
+            rebuildInspectDropdown();
+            const sel = document.getElementById('inspectSelect');
+            if(sel.value) renderInspect(sel.value);
+            else if(sel.options.length && !sel.options[0].disabled){ sel.selectedIndex=0; renderInspect(sel.value); }
+        });
         document.getElementById('inspectSearch').addEventListener('input', ()=>{ rebuildInspectDropdown(); });
         document.getElementById('inspectSelect').addEventListener('change', (e)=> renderInspect(e.target.value));
         // location card buttons
@@ -1034,8 +1152,9 @@
             if(!inspectLoaded){
                 // quiet background load
                 fetch('data/data_manifest.json').then(r=>r.ok?r.json():null).then(j=>{
-                    if(j && Array.isArray(j)){ inspectData=j; inspectLoaded=true; const mut=j.filter(d=>d.FGFR3_status==='MUT').length; const wt=j.filter(d=>d.FGFR3_status==='WT').length; document.getElementById('tab-inspect-count').textContent=j.length; const f=document.getElementById('inspectFilter'); if(f){ f.options[0].textContent=`All images (${j.length})`; f.options[1].textContent=`Mutant only (${mut})`; f.options[2].textContent=`Non-mutant (WT) only (${wt})`; } updateViewerBanner(base); }
+                    if(j && Array.isArray(j)){ inspectData=j; inspectLoaded=true; document.getElementById('tab-inspect-count').textContent=j.length; updateInspectFilterCounts(); updateViewerBanner(base); }
                 }).catch(()=>{});
+                loadPaperLookup().catch(()=>{});
             } else {
                 setTimeout(()=> updateViewerBanner(base), 400);
             }
