@@ -16,7 +16,8 @@ How it works:
 5. Print top/bottom tiles in (tx, ty) + score.
 
 Usage:
-    python reproduce/heatmap.py --data_dir output/data_fgfr3_mini --slide TCGA-CF-A5U8 --out output/heatmaps
+    # fgfr3mut_env ONLY (torch-env's imagecodecs lacks JPEG decode -> onsvs crashes):
+    PYTHONPATH=fgfr3mut conda run -n fgfr3mut_env python reproduce/heatmap.py --data_dir output/data_fgfr3_mini --slide TCGA-CF-A5U8 --out output/heatmaps
     python reproduce/heatmap.py --data_dir output/data_fgfr3_mini --slide TCGA-FJ-A871 --slide_idx 4 --svs image/TCGA-FJ-A871-01Z-00-DX5.8F79D0A8-5DE6-4159-AA77-61DACB21E867.svs --out output/heatmaps
 
 Outputs in --out:
@@ -43,10 +44,27 @@ from fgfr3mut.chowder import Chowder
 from fgfr3mut.utils import load_ckpt, sigmoid
 
 TOP_K = 9
-ALPHA = 0.55
-# 'turbo' (rainbow) default: blue/cyan/green/yellow stand out on pink H&E,
-# unlike coolwarm red which blends with eosin. Try --cmap inferno/viridis/jet.
-CMAP = "turbo"
+ALPHA = 0.75  # high so cmap blue dominates pink H&E (paper Fig.2e is near-opaque)
+# Tile scores cluster mid-range (~0.3-0.5 even on WT slides); gamma Them
+# toward blue so only true hotspots glow yellow/red like paper Fig.2e.
+GAMMA = 2.0
+# Paper Fig.2e style: tissue blue by default, yellow->red where P(mutant) is
+# high. 'fgfr3_paper' custom map below; --cmap overrides (turbo/jet/inferno…).
+CMAP = "fgfr3_paper"
+_PAPER_COLORS = ["#2b5cab", "#5dade2", "#f7e731", "#f4511e", "#c21807"]
+
+
+def _register_paper_cmap():
+    """Blue (WT) -> yellow -> red (MUT), mimicking paper Fig.2e colorbar."""
+    from matplotlib.colors import LinearSegmentedColormap
+    import matplotlib
+    import matplotlib.pyplot as plt
+    if "fgfr3_paper" not in plt.colormaps():
+        cmap = LinearSegmentedColormap.from_list("fgfr3_paper", _PAPER_COLORS, N=256)
+        matplotlib.colormaps.register(cmap, name="fgfr3_paper")  # matplotlib >= 3.9
+
+
+_register_paper_cmap()
 
 
 def find_slide_dirs(features_dir: Path, slide_substr: str) -> List[Path]:
@@ -111,21 +129,28 @@ def overlay_on_thumbnail(bg: np.ndarray, tx: np.ndarray, ty: np.ndarray,
     sx, sy = w / wl, h / hl
     fw, fh = max(1, int(round(tile_size * sx))), max(1, int(round(tile_size * sy)))
     cmap = plt.get_cmap(CMAP)
-    canvas = bg.astype(np.float32) / 255.0
+    # Grayscale base: pink eosin + blue makes purple; gray + blue stays blue
+    # like paper Fig.2e. Alpha grows with score: blue wash on tissue,
+    # near-opaque yellow/red hotspots.
+    gray = (0.299 * bg[..., 0] + 0.587 * bg[..., 1] + 0.114 * bg[..., 2]) / 255.0
+    canvas = np.stack([gray, gray, gray], axis=-1).astype(np.float32)
     for x, y, s in zip(tx, ty, scores):
         px, py = int(round(x * tile_size * sx)), int(round(y * tile_size * sy))
         x1, y1 = min(w, px + fw), min(h, py + fh)
         if x1 <= px or y1 <= py:
             continue
-        rgb = np.array(cmap(float(np.clip(s, 0, 1)))[:3], dtype=np.float32)
+        v = float(np.clip(s, 0, 1)) ** GAMMA
+        a = 0.5 + 0.5 * v
+        rgb = np.array(cmap(v)[:3], dtype=np.float32)
         patch = canvas[py:y1, px:x1]
-        canvas[py:y1, px:x1] = (1 - alpha) * patch + alpha * rgb
+        canvas[py:y1, px:x1] = (1 - a) * patch + a * rgb
     return (np.clip(canvas, 0, 1) * 255).astype(np.uint8)
 
 
 def save_attention(grid: np.ndarray, title: str, out_png: Path):
     fig, ax = plt.subplots(figsize=(10, 8))
-    im = ax.imshow(grid, cmap=CMAP, vmin=0, vmax=1, interpolation="nearest")
+    im = ax.imshow(np.nan_to_num(grid, nan=0.0) ** GAMMA, cmap=CMAP, vmin=0, vmax=1,
+                   interpolation="nearest")
     ax.set_title(title)
     ax.set_xlabel("tile x")
     ax.set_ylabel("tile y")
@@ -149,7 +174,7 @@ def save_overlay_mask(grid: np.ndarray, mask: np.ndarray, title: str, out_png: P
         valid = np.kron((~np.isnan(grid)).astype(np.uint8), np.ones((ry, rx), dtype=np.uint8))[:h, :w] > 0
     bg = mask.astype(np.float32)
     bg = (bg - bg.min()) / max(1e-6, bg.max() - bg.min())
-    rgb = plt.get_cmap(CMAP)(np.clip(heat, 0, 1))[..., :3]
+    rgb = plt.get_cmap(CMAP)(np.clip(heat, 0, 1) ** GAMMA)[..., :3]
     canvas = np.stack([bg, bg, bg], axis=-1)
     m = valid[..., None] & (bg[..., None] > 0.02)
     canvas = np.where(m, (1 - ALPHA) * canvas + ALPHA * rgb, canvas)
@@ -170,11 +195,12 @@ def main():
     ap.add_argument("--svs", default=None, help="Path to local .svs (default: image/<slide_dir_name>)")
     ap.add_argument("--bg_page", type=int, default=3, help="tifffile page: 1=thumbnail 878px, 3=~5k px (default)")
     ap.add_argument("--alpha", type=float, default=ALPHA)
-    ap.add_argument("--cmap", default=CMAP, help="matplotlib colormap (turbo, inferno, viridis, jet, coolwarm)")
+    ap.add_argument("--cmap", default=CMAP, help="matplotlib colormap (fgfr3_paper, turbo, jet, inferno, coolwarm)")
     ap.add_argument("--out", default="output/heatmaps")
     ap.add_argument("--n_models", type=int, default=10, help="10=fast, 0=all 125")
     ap.add_argument("--device", default="cpu")
     args = ap.parse_args()
+    _register_paper_cmap()  # custom map must exist before plt.get_cmap(CMAP)
     CMAP = args.cmap
 
     data_dir = Path(args.data_dir)
