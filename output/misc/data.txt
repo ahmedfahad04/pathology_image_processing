@@ -1,0 +1,472 @@
+{
+  "data": {
+    "data_format": "SVS", 
+    "cases": [
+      {
+        "lost_to_followup": "No", 
+        "disease_type": "Transitional Cell Papillomas and Carcinomas", 
+        "submitter_id": "TCGA-FD-A3NA", 
+        "days_to_consent": 974, 
+        "diagnoses": [
+          {
+            "ajcc_pathologic_t": "T2a", 
+            "morphology": "Not Reported", 
+            "submitter_id": "TCGA-FD-A3NA_diagnosis2", 
+            "created_datetime": "2025-01-06T11:55:23.413378-06:00", 
+            "tissue_or_organ_of_origin": "Prostate gland", 
+            "age_at_diagnosis": null, 
+            "primary_diagnosis": "Carcinoma, NOS", 
+            "classification_of_tumor": "Synchronous primary", 
+            "updated_datetime": "2025-01-08T12:56:41.008899-06:00", 
+            "diagnosis_id": "034d5b39-1d64-421e-9d64-8319a2657e26", 
+            "site_of_resection_or_biopsy": "Not Reported", 
+            "state": "released", 
+            "diagnosis_is_primary_disease": false
+          }, 
+          {
+            "synchronous_malignancy": "Yes", 
+            "ajcc_pathologic_stage": "Stage II", 
+            "days_to_diagnosis": 0, 
+            "created_datetime": null, 
+            "last_known_disease_status": null, 
+            "tissue_or_organ_of_origin": "Posterior wall of bladder", 
+            "days_to_last_follow_up": 1845.0, 
+            "age_at_diagnosis": 21936, 
+            "primary_diagnosis": "Transitional cell carcinoma", 
+            "updated_datetime": "2025-10-24T10:02:23.505661-05:00", 
+            "prior_malignancy": "no", 
+            "year_of_diagnosis": 2009, 
+            "state": "released", 
+            "prior_treatment": "No", 
+            "diagnosis_is_primary_disease": true, 
+            "days_to_last_known_disease_status": null, 
+            "method_of_diagnosis": "Cystoscopy", 
+            "ajcc_staging_system_edition": "6th", 
+            "ajcc_pathologic_t": "T2b", 
+            "days_to_recurrence": null, 
+            "morphology": "8120/3", 
+            "ajcc_pathologic_n": "N0", 
+            "ajcc_pathologic_m": "MX", 
+            "submitter_id": "TCGA-FD-A3NA_diagnosis", 
+            "classification_of_tumor": "primary", 
+            "diagnosis_id": "04b26302-055c-5613-906c-7a6feae29a93", 
+            "icd_10_code": "C67.4", 
+            "site_of_resection_or_biopsy": "Bladder, NOS", 
+            "tumor_grade": "High Grade", 
+            "progression_or_recurrence": null
+          }, 
+          {
+            "ajcc_pathologic_t": "T2a", 
+            "morphology": "8140/3", 
+            "ajcc_pathologic_stage": "Stage IIA", 
+            "ajcc_pathologic_n": "N0", 
+            "ajcc_pathologic_m": "MX", 
+            "submitter_id": "TCGA-FD-A3NA_diagnosis4", 
+            "created_datetime": "2025-01-06T11:55:23.413378-06:00", 
+            "tissue_or_organ_of_origin": "Prostate gland", 
+            "age_at_diagnosis": null, 
+            "primary_diagnosis": "Adenocarcinoma, NOS", 
+            "classification_of_tumor": "Synchronous primary", 
+            "updated_datetime": "2025-01-08T12:56:41.008899-06:00", 
+            "diagnosis_id": "adf2cbc0-ad28-4513-814c-0d40565c5d98", 
+            "site_of_resection_or_biopsy": "Not Reported", 
+            "state": "released", 
+            "diagnosis_is_primary_disease": false, 
+            "ajcc_staging_system_edition": "6th"
+          }, 
+          {
+            "morphology": "Not Reported", 
+            "submitter_id": "TCGA-FD-A3NA_diagnosis3", 
+            "days_to_diagnosis": 1338, 
+            "created_datetime": "2025-01-06T11:55:23.413378-06:00", 
+            "tissue_or_organ_of_origin": "Lung, NOS", 
+            "age_at_diagnosis": 23274, 
+            "primary_diagnosis": "Not Reported", 
+            "classification_of_tumor": "Subsequent Primary", 
+            "updated_datetime": "2025-01-08T12:56:41.008899-06:00", 
+            "diagnosis_id": "bf65f1c0-dbbe-4f2a-a6b6-5ab0ec93c26e", 
+            "site_of_resection_or_biopsy": "Not Reported", 
+            "state": "released", 
+            "prior_treatment": "Yes", 
+            "diagnosis_is_primary_disease": false
+          }
+        ], 
+        "created_datetime": null, 
+        "samples": [
+          {
+            "tumor_descriptor": "Primary", 
+            "specimen_type": "Solid Tissue", 
+            "updated_datetime": "2023-11-08T11:18:26.291514-06:00", 
+            "days_to_sample_procurement": 0, 
+            "sample_id": "78f6c843-1a0d-4d6a-9313-03be18a66ce0", 
+            "submitter_id": "TCGA-FD-A3NA-01Z", 
+            "state": "released", 
+            "sample_type": "Primary Tumor", 
+            "tissue_type": "Tumor", 
+            "preservation_method": "FFPE", 
+            "created_datetime": "2018-05-17T11:48:27.279759-05:00", 
+            "portions": [
+              {
+                "portion_id": "c9ab30f3-6207-58f3-ab54-25a48dc34821"
+              }
+            ]
+          }
+        ], 
+        "consent_type": "Informed Consent", 
+        "demographic": {
+          "race": "white", 
+          "ethnicity": "not hispanic or latino", 
+          "vital_status": "Alive", 
+          "age_at_index": 60, 
+          "submitter_id": "TCGA-FD-A3NA_demographic", 
+          "days_to_birth": -21936, 
+          "created_datetime": null, 
+          "year_of_birth": null, 
+          "demographic_id": "11e853f9-e12d-577a-a176-5f7fe73f0fbb", 
+          "updated_datetime": "2025-10-16T15:40:44.739920-05:00", 
+          "age_is_obfuscated": false, 
+          "state": "released", 
+          "sex_at_birth": "male", 
+          "year_of_death": null, 
+          "country_of_residence_at_enrollment": "United States"
+        }, 
+        "primary_site": "Bladder", 
+        "updated_datetime": "2025-01-06T11:55:23.413378-06:00", 
+        "case_id": "14917461-dae4-44cb-909d-42ac45aef450", 
+        "index_date": "Diagnosis", 
+        "state": "released"
+      }
+    ], 
+    "access": "open", 
+    "file_name": "TCGA-FD-A3NA-01Z-00-DX1.2AD62CEE-0D76-4382-AE2E-9B7FCB1130D9.svs", 
+    "submitter_id": "TCGA-FD-A3NA-01Z-00-DX1_slide_image", 
+    "data_category": "Biospecimen", 
+    "acl": [
+      "open"
+    ], 
+    "type": "slide_image", 
+    "file_size": 2725902831, 
+    "created_datetime": "2021-10-13T18:46:51.379642-05:00", 
+    "md5sum": "941ccd9ea45cac7c9d8f27d1692221ad", 
+    "updated_datetime": "2021-10-14T18:28:40.154674-05:00", 
+    "file_id": "4b01fc02-9c0d-40b7-8056-6988b682915d", 
+    "data_type": "Slide Image", 
+    "state": "released", 
+    "experimental_strategy": "Diagnostic Slide", 
+    "version": "1", 
+    "data_release": "31.0 - 46.0"
+  }, 
+  "warnings": {}
+}{
+  "data": {
+    "data_format": "SVS", 
+    "cases": [
+      {
+        "lost_to_followup": "No", 
+        "disease_type": "Transitional Cell Papillomas and Carcinomas", 
+        "submitter_id": "TCGA-FJ-A871", 
+        "days_to_consent": -6, 
+        "diagnoses": [
+          {
+            "morphology": "8120/3", 
+            "submitter_id": "TCGA-FJ-A871_diagnosis3", 
+            "days_to_diagnosis": 106, 
+            "created_datetime": "2025-01-06T11:33:17.545677-06:00", 
+            "tissue_or_organ_of_origin": "Pelvis, NOS", 
+            "age_at_diagnosis": 18157, 
+            "primary_diagnosis": "Transitional cell carcinoma", 
+            "classification_of_tumor": "recurrence", 
+            "tumor_of_origin": "TCGA-FJ-A871_diagnosis", 
+            "updated_datetime": "2025-01-08T12:56:41.008899-06:00", 
+            "diagnosis_id": "4756416a-ee86-4887-ae58-b00ef1f1e735", 
+            "site_of_resection_or_biopsy": "Not Reported", 
+            "state": "released", 
+            "prior_treatment": "Yes", 
+            "diagnosis_is_primary_disease": false
+          }, 
+          {
+            "synchronous_malignancy": "No", 
+            "ajcc_pathologic_stage": "Stage III", 
+            "days_to_diagnosis": 0, 
+            "created_datetime": null, 
+            "last_known_disease_status": null, 
+            "tissue_or_organ_of_origin": "Lateral wall of bladder", 
+            "days_to_last_follow_up": 272.0, 
+            "age_at_diagnosis": 18051, 
+            "primary_diagnosis": "Transitional cell carcinoma", 
+            "updated_datetime": "2025-10-24T10:02:23.505661-05:00", 
+            "prior_malignancy": "no", 
+            "year_of_diagnosis": 2013, 
+            "state": "released", 
+            "prior_treatment": "No", 
+            "diagnosis_is_primary_disease": true, 
+            "days_to_last_known_disease_status": null, 
+            "method_of_diagnosis": "Surgical Resection", 
+            "ajcc_staging_system_edition": "7th", 
+            "ajcc_pathologic_t": "T3b", 
+            "days_to_recurrence": null, 
+            "morphology": "8120/3", 
+            "ajcc_pathologic_n": "NX", 
+            "ajcc_pathologic_m": "MX", 
+            "submitter_id": "TCGA-FJ-A871_diagnosis", 
+            "ajcc_clinical_t": "T2", 
+            "classification_of_tumor": "primary", 
+            "diagnosis_id": "b2da66b0-dabe-5b0a-9c3b-332808c74370", 
+            "icd_10_code": "C67.2", 
+            "site_of_resection_or_biopsy": "Bladder, NOS", 
+            "tumor_grade": "High Grade", 
+            "progression_or_recurrence": null
+          }, 
+          {
+            "morphology": "Not Reported", 
+            "submitter_id": "TCGA-FJ-A871_diagnosis2", 
+            "days_to_diagnosis": 106, 
+            "created_datetime": "2025-01-06T11:33:17.545677-06:00", 
+            "tissue_or_organ_of_origin": "Pelvis, NOS", 
+            "age_at_diagnosis": 18157, 
+            "primary_diagnosis": "Not Reported", 
+            "classification_of_tumor": "Subsequent Primary", 
+            "updated_datetime": "2025-01-08T12:56:41.008899-06:00", 
+            "diagnosis_id": "b47a380f-c956-44a7-a9c7-9b7e2cf658fd", 
+            "site_of_resection_or_biopsy": "Not Reported", 
+            "state": "released", 
+            "prior_treatment": "Yes", 
+            "diagnosis_is_primary_disease": false
+          }
+        ], 
+        "created_datetime": null, 
+        "samples": [
+          {
+            "tumor_descriptor": "Primary", 
+            "specimen_type": "Solid Tissue", 
+            "updated_datetime": "2023-11-08T11:18:26.291514-06:00", 
+            "days_to_sample_procurement": 0, 
+            "sample_id": "b1a543eb-ec25-4b9a-b77a-7f641318ad44", 
+            "submitter_id": "TCGA-FJ-A871-01Z", 
+            "state": "released", 
+            "sample_type": "Primary Tumor", 
+            "tissue_type": "Tumor", 
+            "preservation_method": "FFPE", 
+            "created_datetime": "2018-05-17T11:48:27.279759-05:00", 
+            "portions": [
+              {
+                "portion_id": "a685dbbe-d770-57d9-8438-a8922a5205f7"
+              }, 
+              {
+                "portion_id": "803a26e3-04da-53d1-83ab-349c3f22f2bb"
+              }, 
+              {
+                "portion_id": "40bd0b49-ee7f-5190-a576-00088c8dd455"
+              }, 
+              {
+                "portion_id": "a75d94f2-276d-50e2-a945-19d1aa39e4d3"
+              }, 
+              {
+                "portion_id": "23b8ec01-c096-51e7-b824-f12bd5718b51"
+              }
+            ]
+          }
+        ], 
+        "consent_type": "Informed Consent", 
+        "demographic": {
+          "race": "white", 
+          "ethnicity": "not hispanic or latino", 
+          "vital_status": "Dead", 
+          "age_at_index": 49, 
+          "submitter_id": "TCGA-FJ-A871_demographic", 
+          "days_to_birth": -18051, 
+          "created_datetime": null, 
+          "year_of_birth": null, 
+          "demographic_id": "e7b1c239-d607-5eb7-8453-88dc551973fc", 
+          "updated_datetime": "2025-10-16T15:40:44.739920-05:00", 
+          "age_is_obfuscated": false, 
+          "days_to_death": 272, 
+          "state": "released", 
+          "sex_at_birth": "male", 
+          "year_of_death": null, 
+          "country_of_residence_at_enrollment": "United States"
+        }, 
+        "primary_site": "Bladder", 
+        "updated_datetime": "2025-01-06T11:33:17.545677-06:00", 
+        "case_id": "bb38805e-2ccc-4169-ba01-34b98adf5bd0", 
+        "index_date": "Diagnosis", 
+        "state": "released"
+      }
+    ], 
+    "access": "open", 
+    "file_name": "TCGA-FJ-A871-01Z-00-DX5.8F79D0A8-5DE6-4159-AA77-61DACB21E867.svs", 
+    "submitter_id": "TCGA-FJ-A871-01Z-00-DX5_slide_image", 
+    "data_category": "Biospecimen", 
+    "acl": [
+      "open"
+    ], 
+    "type": "slide_image", 
+    "file_size": 1166418943, 
+    "created_datetime": "2021-10-13T18:36:26.057939-05:00", 
+    "md5sum": "3ee2aa658a3fb19159338d3692c80d4f", 
+    "updated_datetime": "2021-10-14T18:28:40.154674-05:00", 
+    "file_id": "3caa2d31-55fc-4117-9c53-c15624e8927a", 
+    "data_type": "Slide Image", 
+    "state": "released", 
+    "experimental_strategy": "Diagnostic Slide", 
+    "version": "1", 
+    "data_release": "31.0 - 46.0"
+  }, 
+  "warnings": {}
+}{
+  "data": {
+    "data_format": "SVS", 
+    "cases": [
+      {
+        "lost_to_followup": "No", 
+        "disease_type": "Transitional Cell Papillomas and Carcinomas", 
+        "submitter_id": "TCGA-FJ-A871", 
+        "days_to_consent": -6, 
+        "diagnoses": [
+          {
+            "morphology": "8120/3", 
+            "submitter_id": "TCGA-FJ-A871_diagnosis3", 
+            "days_to_diagnosis": 106, 
+            "created_datetime": "2025-01-06T11:33:17.545677-06:00", 
+            "tissue_or_organ_of_origin": "Pelvis, NOS", 
+            "age_at_diagnosis": 18157, 
+            "primary_diagnosis": "Transitional cell carcinoma", 
+            "classification_of_tumor": "recurrence", 
+            "tumor_of_origin": "TCGA-FJ-A871_diagnosis", 
+            "updated_datetime": "2025-01-08T12:56:41.008899-06:00", 
+            "diagnosis_id": "4756416a-ee86-4887-ae58-b00ef1f1e735", 
+            "site_of_resection_or_biopsy": "Not Reported", 
+            "state": "released", 
+            "prior_treatment": "Yes", 
+            "diagnosis_is_primary_disease": false
+          }, 
+          {
+            "synchronous_malignancy": "No", 
+            "ajcc_pathologic_stage": "Stage III", 
+            "days_to_diagnosis": 0, 
+            "created_datetime": null, 
+            "last_known_disease_status": null, 
+            "tissue_or_organ_of_origin": "Lateral wall of bladder", 
+            "days_to_last_follow_up": 272.0, 
+            "age_at_diagnosis": 18051, 
+            "primary_diagnosis": "Transitional cell carcinoma", 
+            "updated_datetime": "2025-10-24T10:02:23.505661-05:00", 
+            "prior_malignancy": "no", 
+            "year_of_diagnosis": 2013, 
+            "state": "released", 
+            "prior_treatment": "No", 
+            "diagnosis_is_primary_disease": true, 
+            "days_to_last_known_disease_status": null, 
+            "method_of_diagnosis": "Surgical Resection", 
+            "ajcc_staging_system_edition": "7th", 
+            "ajcc_pathologic_t": "T3b", 
+            "days_to_recurrence": null, 
+            "morphology": "8120/3", 
+            "ajcc_pathologic_n": "NX", 
+            "ajcc_pathologic_m": "MX", 
+            "submitter_id": "TCGA-FJ-A871_diagnosis", 
+            "ajcc_clinical_t": "T2", 
+            "classification_of_tumor": "primary", 
+            "diagnosis_id": "b2da66b0-dabe-5b0a-9c3b-332808c74370", 
+            "icd_10_code": "C67.2", 
+            "site_of_resection_or_biopsy": "Bladder, NOS", 
+            "tumor_grade": "High Grade", 
+            "progression_or_recurrence": null
+          }, 
+          {
+            "morphology": "Not Reported", 
+            "submitter_id": "TCGA-FJ-A871_diagnosis2", 
+            "days_to_diagnosis": 106, 
+            "created_datetime": "2025-01-06T11:33:17.545677-06:00", 
+            "tissue_or_organ_of_origin": "Pelvis, NOS", 
+            "age_at_diagnosis": 18157, 
+            "primary_diagnosis": "Not Reported", 
+            "classification_of_tumor": "Subsequent Primary", 
+            "updated_datetime": "2025-01-08T12:56:41.008899-06:00", 
+            "diagnosis_id": "b47a380f-c956-44a7-a9c7-9b7e2cf658fd", 
+            "site_of_resection_or_biopsy": "Not Reported", 
+            "state": "released", 
+            "prior_treatment": "Yes", 
+            "diagnosis_is_primary_disease": false
+          }
+        ], 
+        "created_datetime": null, 
+        "samples": [
+          {
+            "tumor_descriptor": "Primary", 
+            "specimen_type": "Solid Tissue", 
+            "updated_datetime": "2023-11-08T11:18:26.291514-06:00", 
+            "days_to_sample_procurement": 0, 
+            "sample_id": "b1a543eb-ec25-4b9a-b77a-7f641318ad44", 
+            "submitter_id": "TCGA-FJ-A871-01Z", 
+            "state": "released", 
+            "sample_type": "Primary Tumor", 
+            "tissue_type": "Tumor", 
+            "preservation_method": "FFPE", 
+            "created_datetime": "2018-05-17T11:48:27.279759-05:00", 
+            "portions": [
+              {
+                "portion_id": "a685dbbe-d770-57d9-8438-a8922a5205f7"
+              }, 
+              {
+                "portion_id": "803a26e3-04da-53d1-83ab-349c3f22f2bb"
+              }, 
+              {
+                "portion_id": "40bd0b49-ee7f-5190-a576-00088c8dd455"
+              }, 
+              {
+                "portion_id": "a75d94f2-276d-50e2-a945-19d1aa39e4d3"
+              }, 
+              {
+                "portion_id": "23b8ec01-c096-51e7-b824-f12bd5718b51"
+              }
+            ]
+          }
+        ], 
+        "consent_type": "Informed Consent", 
+        "demographic": {
+          "race": "white", 
+          "ethnicity": "not hispanic or latino", 
+          "vital_status": "Dead", 
+          "age_at_index": 49, 
+          "submitter_id": "TCGA-FJ-A871_demographic", 
+          "days_to_birth": -18051, 
+          "created_datetime": null, 
+          "year_of_birth": null, 
+          "demographic_id": "e7b1c239-d607-5eb7-8453-88dc551973fc", 
+          "updated_datetime": "2025-10-16T15:40:44.739920-05:00", 
+          "age_is_obfuscated": false, 
+          "days_to_death": 272, 
+          "state": "released", 
+          "sex_at_birth": "male", 
+          "year_of_death": null, 
+          "country_of_residence_at_enrollment": "United States"
+        }, 
+        "primary_site": "Bladder", 
+        "updated_datetime": "2025-01-06T11:33:17.545677-06:00", 
+        "case_id": "bb38805e-2ccc-4169-ba01-34b98adf5bd0", 
+        "index_date": "Diagnosis", 
+        "state": "released"
+      }
+    ], 
+    "access": "open", 
+    "file_name": "TCGA-FJ-A871-01Z-00-DX5.8F79D0A8-5DE6-4159-AA77-61DACB21E867.svs", 
+    "submitter_id": "TCGA-FJ-A871-01Z-00-DX5_slide_image", 
+    "data_category": "Biospecimen", 
+    "acl": [
+      "open"
+    ], 
+    "type": "slide_image", 
+    "file_size": 1166418943, 
+    "created_datetime": "2021-10-13T18:36:26.057939-05:00", 
+    "md5sum": "3ee2aa658a3fb19159338d3692c80d4f", 
+    "updated_datetime": "2021-10-14T18:28:40.154674-05:00", 
+    "file_id": "3caa2d31-55fc-4117-9c53-c15624e8927a", 
+    "data_type": "Slide Image", 
+    "state": "released", 
+    "experimental_strategy": "Diagnostic Slide", 
+    "version": "1", 
+    "data_release": "31.0 - 46.0"
+  }, 
+  "warnings": {}
+}
