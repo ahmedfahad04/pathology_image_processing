@@ -856,7 +856,7 @@ def main():
 
 ```bash
 # Full fetch (926 slides) then re-analyze
-python scripts/analysis/fetch_cbioportal_data.py --file-list output/tcga_blca_file_names.txt --outdir data --batch-size 30
+python scripts/analysis/fetch_cbioportal_data.py --file-list output/misc/tcga_blca_file_names.txt --outdir data --batch-size 30
 python scripts/analysis/analyze_fgfr3_mutations.py --data-dir data --out-dir output/mutation_analysis
 
 # Per-image deep dive for one slide (e.g. the big SVS on disk)

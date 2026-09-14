@@ -6,6 +6,94 @@
 
 ---
 
+## Quick Start
+
+### Prerequisites
+
+- Python 3.8+ (tested on 3.12)
+- Modern browser (Chrome/Firefox) for SVS viewer
+- ~15 GB RAM for full-pipeline processing (less for viewing)
+
+### 1. Install Dependencies
+
+```bash
+# Full pipeline
+pip install -r scripts/config/requirements.txt
+
+# Viewer only (minimal)
+pip install RangeHTTPServer tifffile imagecodecs Pillow
+```
+
+### 2. View the SVS Slide in Your Browser
+
+```bash
+# Start server from repo root
+python3 -m RangeHTTPServer 8765
+
+# Open in browser
+# Main viewer:  http://localhost:8765/viewer.html
+# Thumbnail:    http://localhost:8765/thumbnail.jpg
+```
+
+Or run in the background:
+
+```bash
+nohup python3 -m RangeHTTPServer 8765 > /tmp/svs_server.log 2>&1 &
+echo "http://localhost:8765/viewer.html"
+```
+
+### 3. Run the Preprocessing Pipeline
+
+```bash
+# Quick test (first 10 tissue patches)
+python scripts/preprocessing/preprocess_pipeline.py --max-tiles 10
+
+# Full WSI (~15-20 min CPU)
+python scripts/preprocessing/preprocess_pipeline.py --all
+```
+
+### 4. Fetch cBioPortal Metadata
+
+```bash
+# Single image
+python scripts/analysis/fetch_cbioportal_data.py --image image/TCGA-FJ-A871-01Z-00-DX5.8F79D0A8-5DE6-4159-AA77-61DACB21E867.svs
+
+# Batch (all slides from file list)
+python scripts/analysis/fetch_cbioportal_data.py --file-list output/misc/tcga_blca_file_names.txt --outdir data --batch-size 30
+```
+
+### 5. Run FGFR3 Mutation Analysis
+
+```bash
+python scripts/analysis/analyze_fgfr3_mutations.py --data-dir data --out-dir output/mutation_analysis
+```
+
+---
+
+## SVS Viewer — How It Works
+
+The SVS file is a tiled TIFF pyramid. The viewer parses the TIFF header to learn tile locations, then fetches only visible tiles via HTTP Range requests (`206 Partial Content`). A typical view uses 10-20 tiles (~2-5 MB RAM) instead of the full 38 GB.
+
+| Level        | Dimensions      | Downsample | Tiles   |
+| ------------ | --------------- | ---------- | ------- |
+| 0 (full)     | 141432 × 89585 | 1×        | 220,660 |
+| 1            | 35358 × 22396  | 4×        | 13,912  |
+| 2            | 8839 × 5599    | 16×       | 888     |
+| 3 (overview) | 2209 × 1399    | 64×       | 60      |
+
+![SVS File Format](image/svs_file_format.png)
+
+### Troubleshooting
+
+| Problem                                       | Fix                                                          |
+| --------------------------------------------- | ------------------------------------------------------------ |
+| `curl Range` returns `200` + `1.1 GB`   | You're using`http.server` — switch to `RangeHTTPServer` |
+| Black viewer /`GeoTIFFTileSource not found` | Wait 2s, hard-refresh`Ctrl+Shift+R`, check CDN online      |
+| `Address already in use`                    | `ss -tlnp \| grep 8765` → `kill <PID>` or use `8766`   |
+| `imagecodecs` error on thumbnail            | `pip install imagecodecs`                                  |
+
+---
+
 ## Repository Structure
 
 ```
@@ -16,39 +104,33 @@ Pathology_Image_Processing/
 ├── todo.md                    # Open notes & findings
 ├── data/                      # Downloaded metadata & TCGA SVS files
 │   ├── cbioportal_*.json      # cBioPortal API responses (mutations, expression, CNA)
-│   ├── data_manifest.json     # 16,670-sample metadata manifest
-│   ├── tcga_blca_slides.tsv   # TCGA BLCA slide list
-│   ├── data.txt               # GDC slide metadata (472 records)
-│   └── TCGA-*/                # 1,000+ TCGA SVS directories
+│   ├── data_manifest.json     # 926-folder metadata manifest
+│   ├── TCGA-*/                # 1,000+ TCGA SVS directories
 ├── image/                     # SVS slides + reference images
 │   ├── TCGA-FJ-A871-*.svs     # Main slide (1.1 GB)
 │   ├── TCGA-2F-A9KQ-*.svs     # Additional slides
-│   ├── svs_file_format.png    # SVS internal structure diagram
-│   └── TCGA-CF-A5U8-*.svs     # More slides
+│   └── svs_file_format.png    # SVS internal structure diagram
 ├── scripts/                   # All processing scripts (organized)
 │   ├── preprocessing/         # Image preprocessing pipeline
 │   │   ├── preprocess_pipeline.py     # Main pipeline (tissue-only filtering)
 │   │   ├── patch_normalization_pipeline.py  # Macenko normalization (raw+normalized)
 │   │   ├── tile_extractor.py          # Overlapping tile extraction from WSI
 │   │   ├── tissue_detector.py         # Tissue/glass/focus/stain quality check
-│   │   ├── background_remover.py      # Binary tissue mask (Otsu + closing)多项式
+│   │   ├── background_remover.py      # Binary tissue mask (Otsu + closing)
 │   │   ├── noise_remover.py           # Gaussian + Median + Morphological opening
 │   │   ├── color_normalizer.py        # Percentile color normalization
 │   │   ├── macenko_normalizer.py      # Macenko H&E stain normalization (gold standard)
-│   │   ├── 122_normalizing_HnE_images.py  # Original Macenko reference implementation
-│   │   ├── config.yaml                # Pipeline configuration (patch size, thresholds, etc.)
+│   │   ├── config.yaml                # Pipeline configuration
 │   │   └── test_tile.png              # Test image for preprocessing
 │   ├── analysis/                # Data analysis & figure generation
-│   │   ├── analyze_fgfr3_mutations.py  # FGFR3 prevalence, hotspots, VAF, expression stats
+│   │   ├── analyze_fgfr3_mutations.py  # FGFR3 prevalence, hotspots, VAF, expression
 │   │   └── fetch_cbioportal_data.py    # cBioPortal API data fetcher
 │   ├── annotation/              # Mutant location annotation
 │   │   └── annotate_mutant_locations.py  # Locate & annotate FGFR3 mutants in slides
-│   ├── utils/                   # Utility scripts
+│   ├── utils/
 │   │   └── download_svs.sh      # Download TCGA SVS via GDC gdc-client
-│   ├── config/                  # Project configuration
-│   │   └── requirements.txt     # Python dependencies
-│   └── docs/                    # Documentation
-│       └── PREPROCESSING.md     # Detailed preprocessing guide
+│   └── config/
+│       └── requirements.txt     # Python dependencies
 ├── output/                    # All generated outputs
 │   ├── mutation_analysis/     # Fig1-7 figures + report (FGFR3 cohort stats)
 │   │   ├── fig1_prevalence.png ... fig7_histology_surrogates.png
@@ -59,39 +141,15 @@ Pathology_Image_Processing/
 │   │   ├── WHICH_IMAGES_ARE_MUTANT.csv
 │   │   ├── MUT_list.txt / WT_list.txt
 │   │   ├── annotated_TCGA-FJ-A871-*.png
-│   │   ├── simulated_heatmap_MUT_example.png
 │   │   └── GDC_fetch_MUT_images.sh
+│   ├── misc/                  # Reference data & file lists
+│   │   ├── tcga_blca_slides.tsv
+│   │   ├── tcga_blca_file_names.txt / .csv
+│   │   ├── cbioportal_summary_all.csv
+│   │   └── README_cBioPortal.md
 │   ├── preprocessed/          # Full pipeline output (tiles, masks, metadata)
-│   ├── patches/               # Macenko patch output (raw/normalized pairs)
-│   └── cbioportal_summary_all.csv
-├── docs/                      # Project documentation
-│   ├── PIPELINE_SUMMARY.md    # Two-pipeline comparison (preprocessing vs Macenko)
-│   ├── PLAN.md                # Nucleus instance segmentation plan
-│   ├── metadata_completeness_report.md
-│   └── s41467-024-55331-6.pdf # Bannier et al. paper
+│   └── patches/               # Macenko patch output (raw/normalized pairs)
 └── .gitignore
-```
-
----
-
-## Quick Start
-
-### Prerequisites
-
-- Python 3.8+ (tested on 3.12)
-- Modern browser (Chrome/Firefox) for SVS viewer
-- ~15 GB RAM for full-pipeline processing (less for pipelined steps)
-
-### Install Dependencies
-
-```bash
-pip install -r scripts/config/requirements.txt
-```
-
-For SVS viewing only:
-
-```bash
-pip install RangeHTTPServer tifffile imagecodecs Pillow
 ```
 
 ---
@@ -144,46 +202,25 @@ python scripts/preprocessing/patch_normalization_pipeline.py --output-dir ../out
 
 Extracts overlapping patches from Whole Slide Images using OpenSlide. Never loads the full image into memory. Configurable patch size, overlap, and stride.
 
-**Used by:** `preprocess_pipeline.py` and `patch_normalization_pipeline.py`
-
-```bash
-# Standalone usage (imports as module)
-python -c "from scripts.preprocessing.tile_extractor import TileExtractor; ..."
-```
-
 #### `tissue_detector.py` — Tissue Detection
 
 Identifies whether a tile contains valid tissue (not glass/background). Checks tissue percentage, focus quality (Laplacian), and staining quality (HSV).
-
-**Used by:** `preprocess_pipeline.py`
 
 #### `background_remover.py` — Background Removal
 
 Creates a binary tissue mask separating tissue from glass background. Uses Grayscale Otsu + inversion + morphological closing.
 
-**Used by:** `preprocess_pipeline.py`
-
 #### `noise_remover.py` — Noise Removal
 
 Applies Gaussian (k=3) → Median (k=3) → Morphological opening (disk=2) filters. Targets Gaussian sensor noise, salt-and-pepper noise, and debris.
-
-**Used by:** `preprocess_pipeline.py`
 
 #### `color_normalizer.py` — Percentile Color Normalization
 
 Standardizes stain colors across tiles using per-channel percentile scaling (low=1, high=99). Fast approximate method for batch color correction.
 
-**Used by:** `preprocess_pipeline.py`
-
 #### `macenko_normalizer.py` — Macenko H&E Stain Normalization
 
 Gold-standard stain normalization using SVD of optical density covariance. Aligns hematoxylin/eosin vectors to a common reference. Based on Macenko et al., ISBI 2009.
-
-**Used by:** `patch_normalization_pipeline.py`
-
-#### `122_normalizing_HnE_images.py` — Original Macenko Reference
-
-Original procedural implementation of the Macenko method. Refactored into `macenko_normalizer.py` for modular use.
 
 ---
 
@@ -203,7 +240,7 @@ python scripts/analysis/fetch_cbioportal_data.py --image image/TCGA-FJ-A871-01Z-
 python scripts/analysis/fetch_cbioportal_data.py --image-dir image/ --study blca_tcga_pan_can_atlas_2018
 
 # File-list mode (batch)
-python scripts/analysis/fetch_cbioportal_data.py --file-list data/tcga_blca_file_names.txt --outdir data --batch-size 30
+python scripts/analysis/fetch_cbioportal_data.py --file-list output/misc/tcga_blca_file_names.txt --outdir data --batch-size 30
 
 # Per-sample deep dive
 python scripts/analysis/fetch_cbioportal_data.py --image image/TCGA-FJ-A871*.svs --outdir data
@@ -243,7 +280,7 @@ python scripts/annotation/annotate_mutant_locations.py --data-dir data --image-d
 
 #### `download_svs.sh` — Download TCGA SVS via GDC
 
-Downloads any TCGA SVS file by file name using the GDC gdc-client. Uses `output/tcga_blca_slides.tsv` for file ID mapping.
+Downloads any TCGA SVS file by file name using the GDC gdc-client. Uses `output/misc/tcga_blca_slides.tsv` for file ID mapping.
 
 ```bash
 # Download a single slide
@@ -258,56 +295,6 @@ echo "TCGA-....svs" | ./scripts/utils/download_svs.sh
 # Custom output directory
 ./scripts/utils/download_svs.sh -d /tmp/my_images TCGA-....svs
 ```
-
----
-
-## SVS Viewer
-
-The interactive SVS viewer lets you browse the full-slide image in your browser without loading the entire 38 GB into RAM. It uses tiled reading — only ~50 KB tiles are fetched on demand.
-
-### Quick Start
-
-```bash
-# Install viewer dependencies
-pip install RangeHTTPServer tifffile imagecodecs Pillow
-
-# Start server (from repo root)
-python3 -m RangeHTTPServer 8765
-
-# or background
-nohup python3 -m RangeHTTPServer 8765 > /tmp/svs_server.log 2>&1 &
-echo "http://localhost:8765/viewer.html"
-
-# Open in browser
-# Main viewer:    http://localhost:8765/viewer.html
-# Thumbnail:      http://localhost:8765/thumbnail.jpg
-```
-
-### How It Works
-
-The SVS file is a tiled TIFF pyramid:
-
-| Level        | Dimensions      | Downsample | Tiles   |
-| ------------ | --------------- | ---------- | ------- |
-| 0 (full)     | 141432 × 89585 | 1×        | 220,660 |
-| 1            | 35358 × 22396  | 4×        | 13,912  |
-| 2            | 8839 × 5599    | 16×       | 888     |
-| 3 (overview) | 2209 × 1399    | 64×       | 60      |
-
-The viewer parses the TIFF header to learn tile locations, then fetches only visible tiles via HTTP Range requests (`206 Partial Content`). A typical view uses 10-20 tiles (~2-5 MB RAM) instead of the full 38 GB.
-
-### SVS Internal Structure
-
-![SVS File Format](image/svs_file_format.png)
-
-### Troubleshooting
-
-| Problem                                       | Fix                                                          |
-| --------------------------------------------- | ------------------------------------------------------------ |
-| `curl Range` returns `200` + `1.1 GB`   | You're using`http.server` — switch to `RangeHTTPServer` |
-| Black viewer /`GeoTIFFTileSource not found` | Wait 2s, hard-refresh`Ctrl+Shift+R`, check CDN online      |
-| `Address already in use`                    | `ss -tlnp \| grep 8765` → `kill <PID>` or use `8766`   |
-| `imagecodecs` error on thumbnail            | `pip install imagecodecs`                                  |
 
 ---
 
@@ -348,20 +335,6 @@ macenko_normalization: {Io: 240, alpha: 1, beta: 0.15}
 
 ---
 
-## Dependencies
-
-Install all required packages:
-
-```bash
-pip install -r scripts/config/requirements.txt
-```
-
-Core packages: `opencv-python`, `scikit-image`, `numpy`, `openslide-python`, `tifffile`, `imagecodecs`, `pyyaml`, `tqdm`
-
-Analysis extras: `matplotlib`, `seaborn`, `pandas` (installed automatically for `analyze_fgfr3_mutations.py`)
-
----
-
 ## Generated Outputs
 
 ### `output/mutation_analysis/`
@@ -390,6 +363,16 @@ Analysis extras: `matplotlib`, `seaborn`, `pandas` (installed automatically for 
 | `simulated_heatmap_MUT_example.png` | Educational heatmap mimicking paper Fig.2e              |
 | `GDC_fetch_MUT_images.sh`           | Commands to download missing MUT slides                 |
 
+### `output/misc/`
+
+| File                              | Content                                                   |
+| --------------------------------- | --------------------------------------------------------- |
+| `tcga_blca_slides.tsv`          | TCGA BLCA slide list (file_name + file_id mapping)        |
+| `tcga_blca_file_names.txt`      | Plain file-name list for batch fetching                   |
+| `tcga_blca_file_names.csv`      | CSV version of file-name list                             |
+| `cbioportal_summary_all.csv`    | Cohort-wide cBioPortal FGFR3 summary                      |
+| `README_cBioPortal.md`          | cBioPortal data documentation                             |
+
 ### `output/preprocessed/`
 
 | Directory                          | Content                                             |
@@ -398,7 +381,6 @@ Analysis extras: `matplotlib`, `seaborn`, `pandas` (installed automatically for 
 | `masks/`                         | Binary tissue masks                                 |
 | `metadata/tiles.json`            | Tile metadata with tissue%, focus, stain quality    |
 | `metadata/processing_stats.json` | Processing statistics                               |
-| `metadata/report.html`           | Visual QC report                                    |
 
 ### `output/patches/`
 

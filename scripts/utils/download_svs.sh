@@ -24,7 +24,7 @@ else
   GDC_CLIENT="$PROJECT_ROOT/bin/gdc-client"
 fi
 
-TSV="$PROJECT_ROOT/output/tcga_blca_slides.tsv"
+TSV="$PROJECT_ROOT/output/misc/tcga_blca_slides.tsv"
 OUTDIR="$PROJECT_ROOT/image"
 
 # --- args ---

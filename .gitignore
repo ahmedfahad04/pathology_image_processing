@@ -9,4 +9,6 @@ __pycache__/
 data/**
 !data/TCGA-BLCA-Metadata.zip
 !output/paper
+!output/paper/**
 !output/misc
+!output/misc/**

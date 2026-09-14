@@ -123,7 +123,7 @@ def gdc_fetch_script(out_dir, mut_df):
         lines.append(f"# gdc-client: gdc-client download $(grep {fname} gdc_manifest.txt | cut -f1)")
         lines.append(f"echo \"To fetch {fname}: go to https://portal.gdc.cancer.gov/files and search file_name\"")
         lines.append("")
-    lines.append("# For bulk: use output/tcga_blca_file_names.txt and scripts/analysis/fetch_cbioportal_data.py already does metadata; for SVS binary use GDC API:")
+    lines.append("# For bulk: use output/misc/tcga_blca_file_names.txt and scripts/analysis/fetch_cbioportal_data.py already does metadata; for SVS binary use GDC API:")
     lines.append("# curl 'https://api.gdc.cancer.gov/files/<FILE_UUID>/data' -o image/<FILE_NAME>.svs")
     (out_dir / "GDC_fetch_MUT_images.sh").write_text("\n".join(lines))
     print(f"Wrote {out_dir/'GDC_fetch_MUT_images.sh'}")

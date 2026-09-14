@@ -6,7 +6,7 @@ Purpose:
   SVS image(s) and save to ``data/``. Handles three input modes:
     1) single image  (--image)
     2) directory scan (--image-dir, default: image/)
-    3) file-list TSV/CSV/TXT (--file-list data/tcga_blca_slides.tsv or data/tcga_blca_file_names.txt)
+    3) file-list TSV/CSV/TXT (--file-list output/misc/tcga_blca_slides.tsv or output/misc/tcga_blca_file_names.txt)
 
   When --file-list is used, the script reads ONLY the ``file_name`` column
   (e.g. TCGA-FD-A3NA-01Z-00-DX1...svs) and creates a per-image subfolder
@@ -48,25 +48,25 @@ Usage:
   # whole folder (legacy)
   python scripts/analysis/fetch_cbioportal_data.py --image-dir image/ --study blca_tcga_pan_can_atlas_2018
 
-  # NEW: from TSV that lists all images (as discovered at data/tcga_blca_slides.tsv)
+  # NEW: from TSV that lists all images (as discovered at output/misc/tcga_blca_slides.tsv)
   # Step A: create file_names list (already done):
-  #   cut -f4 data/tcga_blca_slides.tsv | tail -n +2 > data/tcga_blca_file_names.txt
+  #   cut -f4 output/misc/tcga_blca_slides.tsv | tail -n +2 > output/misc/tcga_blca_file_names.txt
   # Step B: download per-image folder:
-  python scripts/analysis/fetch_cbioportal_data.py --file-list data/tcga_blca_file_names.txt --outdir data
-  python scripts/analysis/fetch_cbioportal_data.py --file-list data/tcga_blca_file_names.csv --outdir data --study blca_tcga_pan_can_atlas_2018
-  python scripts/analysis/fetch_cbioportal_data.py --file-list data/tcga_blca_slides.tsv --outdir data/per_image --per-image-dir
+  python scripts/analysis/fetch_cbioportal_data.py --file-list output/misc/tcga_blca_file_names.txt --outdir data
+  python scripts/analysis/fetch_cbioportal_data.py --file-list output/misc/tcga_blca_file_names.csv --outdir data --study blca_tcga_pan_can_atlas_2018
+  python scripts/analysis/fetch_cbioportal_data.py --file-list output/misc/tcga_blca_slides.tsv --outdir data/per_image --per-image-dir
 
   # limit to first X files (your request: x = number of files)
-  python scripts/analysis/fetch_cbioportal_data.py --file-list data/tcga_blca_file_names.txt --outdir data --limit 10
-  python scripts/analysis/fetch_cbioportal_data.py --file-list data/tcga_blca_file_names.txt --limit 5 --batch-size 5
+  python scripts/analysis/fetch_cbioportal_data.py --file-list output/misc/tcga_blca_file_names.txt --outdir data --limit 10
+  python scripts/analysis/fetch_cbioportal_data.py --file-list output/misc/tcga_blca_file_names.txt --limit 5 --batch-size 5
   python scripts/analysis/fetch_cbioportal_data.py --image-dir image/ --limit 3
-  python scripts/analysis/fetch_cbioportal_data.py -n 20 --file-list data/tcga_blca_slides.tsv
+  python scripts/analysis/fetch_cbioportal_data.py -n 20 --file-list output/misc/tcga_blca_slides.tsv
 
   # custom study / gene
-  python scripts/analysis/fetch_cbioportal_data.py --file-list data/tcga_blca_file_names.txt --gene EGFR --entrez 1956
+  python scripts/analysis/fetch_cbioportal_data.py --file-list output/misc/tcga_blca_file_names.txt --gene EGFR --entrez 1956
 
   # autodetect study
-  python scripts/analysis/fetch_cbioportal_data.py --file-list data/tcga_blca_file_names.txt --study auto
+  python scripts/analysis/fetch_cbioportal_data.py --file-list output/misc/tcga_blca_file_names.txt --study auto
 
 Dependencies:
   pip install requests
@@ -152,7 +152,7 @@ def chunked(lst, n):
 def read_file_list(path: Path):
     """
     Reads file names from TSV/CSV/TXT.
-    - If file is data/tcga_blca_slides.tsv (5 cols, header contains file_name), extracts col 4.
+    - If file is output/misc/tcga_blca_slides.tsv (5 cols, header contains file_name), extracts col 4.
     - If file is csv with header file_name, extracts that column.
     - If file is txt one per line, reads lines.
     Returns list of file_name strings (deduped, order preserved, header skipped).
@@ -693,7 +693,7 @@ def main():
     g = p.add_mutually_exclusive_group(required=False)
     g.add_argument("--image", type=str, help="Path to single SVS file (e.g. image/foo.svs)")
     g.add_argument("--image-dir", type=str, help="Directory containing SVS files")
-    g.add_argument("--file-list", type=str, help="Path to TSV/CSV/TXT listing file_name per line (e.g. data/tcga_blca_slides.tsv or data/tcga_blca_file_names.txt). Creates per-image subfolder {outdir}/{file_stem}/")
+    g.add_argument("--file-list", type=str, help="Path to TSV/CSV/TXT listing file_name per line (e.g. output/misc/tcga_blca_slides.tsv or output/misc/tcga_blca_file_names.txt). Creates per-image subfolder {outdir}/{file_stem}/")
     p.add_argument("--study", type=str, default=DEFAULT_STUDY,
                    help=f"cBioPortal studyId (default: {DEFAULT_STUDY}). Use 'auto' to discover via patient API.")
     p.add_argument("--gene", type=str, default=DEFAULT_GENE, help="Hugo symbol (default: FGFR3)")
