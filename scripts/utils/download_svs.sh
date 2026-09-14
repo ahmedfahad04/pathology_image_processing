@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # download_svs.sh — download any TCGA SVS by file_name via GDC gdc-client
-# Default image dir: /home/fahad/Documents/PROJECTS/Pathology_Image_Processing/image
-# GDC client: ~/Downloads/gdc-client_2.3_Ubuntu_x64-py3.8-ubuntu-20.04/gdc-client_2.3_Ubuntu_x64/gdc-client
-# TSV map: ~/Documents/PROJECTS/Pathology_Image_Processing/output/tcga_blca_slides.tsv (col4=file_name, col3=file_id)
+#
+# GDC client: tries bin/gdc-client in project root, then PATH, then allow -c override
+# TSV map: output/tcga_blca_slides.tsv (col4=file_name, col3=file_id)
 #
 # Usage:
 #   ./scripts/utils/download_svs.sh TCGA-2F-A9KQ-01Z-00-DX1.1C8CB2DD-5CC6-4E99-A0F9-32A0F598F5F9.svs
@@ -12,9 +12,20 @@
 
 set -euo pipefail
 
-GDC_CLIENT="$HOME/Downloads/gdc-client_2.3_Ubuntu_x64-py3.8-ubuntu-20.04/gdc-client_2.3_Ubuntu_x64/gdc-client"
-TSV="$HOME/Documents/PROJECTS/Pathology_Image_Processing/output/tcga_blca_slides.tsv"
-OUTDIR="/home/fahad/Documents/PROJECTS/Pathology_Image_Processing/image"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# find gdc-client: project bin/ -> PATH -> error
+if [[ -x "$PROJECT_ROOT/bin/gdc-client" ]]; then
+  GDC_CLIENT="$PROJECT_ROOT/bin/gdc-client"
+elif command -v gdc-client &>/dev/null; then
+  GDC_CLIENT="$(command -v gdc-client)"
+else
+  GDC_CLIENT="$PROJECT_ROOT/bin/gdc-client"
+fi
+
+TSV="$PROJECT_ROOT/output/tcga_blca_slides.tsv"
+OUTDIR="$PROJECT_ROOT/image"
 
 # --- args ---
 if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
@@ -52,7 +63,13 @@ fi
 
 # --- checks ---
 if [[ ! -x "$GDC_CLIENT" ]]; then
-  echo "Error: gdc-client not found/executable: $GDC_CLIENT" >&2
+  echo "Error: gdc-client not found." >&2
+  echo "  Searched: $PROJECT_ROOT/bin/gdc-client, PATH" >&2
+  echo "  Install options:" >&2
+  echo "    1. Place gdc-client binary in $PROJECT_ROOT/bin/" >&2
+  echo "    2. Install via conda: conda install -c bioconda gdc-client" >&2
+  echo "    3. Download from https://gdc.cancer.gov/access-data/gdc-data-transfer-tool" >&2
+  echo "    4. Use -c /path/to/gdc-client flag" >&2
   exit 1
 fi
 if [[ ! -f "$TSV" ]]; then
