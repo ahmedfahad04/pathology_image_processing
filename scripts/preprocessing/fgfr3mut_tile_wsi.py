@@ -57,6 +57,8 @@ Usage:
 
 import argparse
 import json
+import sys
+import time
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -72,6 +74,48 @@ except ImportError as exc:
     ) from exc
 
 DEFAULT_GRANDQC_WEIGHTS = Path(__file__).parent / "models" / "grandqc" / "Tissue_Detection_MPP10.pth"
+
+
+def log(msg: str) -> None:
+    """Timestamped progress message to stdout (flushed so `tail -f` works)."""
+    print(f"[{time.strftime('%H:%M:%S')}] {msg}", flush=True)
+
+
+def _tqdm(iterable, **kwargs):
+    """tqdm if installed, else a plain iterator (no new dependency)."""
+    try:
+        from tqdm import tqdm
+
+        return tqdm(iterable, **kwargs)
+    except ImportError:
+        return iterable
+
+
+def resolve_device(requested: str = "auto") -> str:
+    """Resolve 'auto' to cuda if available, else cpu.
+
+    - 'auto' (default): 'cuda:0' if torch.cuda.is_available() else 'cpu'.
+    - explicit 'cuda*' but no GPU: warn + fall back to 'cpu'.
+    """
+    req = (requested or "auto").strip().lower()
+    if req == "auto":
+        try:
+            import torch
+
+            return "cuda:0" if torch.cuda.is_available() else "cpu"
+        except ImportError:
+            return "cpu"
+    if req.startswith("cuda"):
+        try:
+            import torch
+
+            if torch.cuda.is_available():
+                return requested  # keep original form e.g. cuda:0 / cuda:1
+            log(f"WARNING: {requested} requested but no GPU found, falling back to cpu")
+        except ImportError:
+            log(f"WARNING: {requested} requested but torch not installed, falling back to cpu")
+        return "cpu"
+    return requested
 
 
 def get_native_mpp(slide: "openslide.OpenSlide", fallback_mpp: float = 0.25) -> float:
@@ -229,10 +273,14 @@ def build_tissue_mask_grandqc(
     he_n = height // p_s
     overhang_wi = width - wi_n * p_s
     overhang_he = height - he_n * p_s
+    total = (wi_n + 1) * (he_n + 1)
+    log(f"[grandqc] thumbnail {width}x{height}, {total} patches ({wi_n + 1}x{he_n + 1}) on {device}...")
 
     rows = []
+    done = 0
+    t0 = time.time()
     with torch.no_grad():
-        for h in range(he_n + 1):
+        for h in _tqdm(range(he_n + 1), desc="[grandqc] rows", unit="row"):
             row_patches = []
             for w in range(wi_n + 1):
                 if w != wi_n and h != he_n:
@@ -255,6 +303,9 @@ def build_tissue_mask_grandqc(
                 if w == wi_n and overhang_wi:
                     class_mask = class_mask[:, p_s - overhang_wi:p_s]
                 row_patches.append(class_mask)
+                done += 1
+                if done % 50 == 0 or done == total:
+                    log(f"[grandqc] {done}/{total} patches ({time.time() - t0:.1f}s)...")
 
             row = np.concatenate(row_patches, axis=1)
             if h == he_n and overhang_he:
@@ -263,6 +314,8 @@ def build_tissue_mask_grandqc(
 
     class_map = np.concatenate(rows, axis=0)
     tissue_mask = np.where(class_map == 0, 255, 0).astype(np.uint8)
+    frac = float((tissue_mask > 0).mean())
+    log(f"[grandqc] done in {time.time() - t0:.1f}s, tissue fraction={frac:.3f}")
     thumb_downsample = w0 / image.size[0]
     return tissue_mask, thumb_downsample
 
@@ -296,12 +349,15 @@ def generate_tile_grid(
     """Enumerate level-0 (x0, y0) top-left corners of tiles passing the
     tissue-coverage threshold."""
     w0, h0 = slide.dimensions
+    nx, ny = len(range(0, w0, step_l0)), len(range(0, h0, step_l0))
+    log(f"[grid] scanning {nx * ny} cells ({nx}x{ny}), step_l0={step_l0}...")
     kept = []
-    for y0 in range(0, h0, step_l0):
+    for y0 in _tqdm(range(0, h0, step_l0), desc="[grid] rows", unit="row"):
         for x0 in range(0, w0, step_l0):
             frac = tissue_fraction_in_cell(tissue_mask, thumb_downsample, x0, y0, step_l0)
             if frac >= min_tissue_fraction:
                 kept.append((x0, y0))
+    log(f"[grid] kept {len(kept)}/{nx * ny} cells (min_tissue_fraction={min_tissue_fraction})")
     return kept
 
 
@@ -341,7 +397,7 @@ def tile_slide(
     save_pngs: bool = False,
     tissue_detector: str = "grandqc",
     grandqc_weights: str = str(DEFAULT_GRANDQC_WEIGHTS),
-    device: str = "cpu",
+    device: str = "auto",
 ) -> Path:
     """Run the full FGFR3MUT-style tiling pipeline on one slide.
 
@@ -349,19 +405,28 @@ def tile_slide(
             <out_dir>/<slide_stem>/metadata.json
             optionally <out_dir>/<slide_stem>/tiles/*.png if save_pngs=True
     """
+    device = resolve_device(device)
     svs_path = Path(svs_path)
+    t_start = time.time()
+    log(f"Using device: {device}")
+    log(f"Opening {svs_path} ...")
     slide = openslide.OpenSlide(str(svs_path))
 
     native_mpp = get_native_mpp(slide)
     level, level_downsample, level_mpp = pick_tiling_level(slide, native_mpp, target_mpp)
+    log(f"native_mpp={native_mpp:.4f}, level={level} (mpp={level_mpp:.4f}), size={slide.dimensions}")
 
     if tissue_detector == "grandqc":
+        log(f"Loading GrandQC weights from {grandqc_weights} on {device} ...")
         model, preprocessing_fn = load_grandqc_model(grandqc_weights, device=device)
+        log("Running GrandQC tissue segmentation ...")
         tissue_mask, thumb_downsample = build_tissue_mask_grandqc(
             slide, model, preprocessing_fn, device=device
         )
     elif tissue_detector == "otsu":
+        log("Running Otsu tissue segmentation ...")
         tissue_mask, thumb_downsample = build_tissue_mask(slide)
+        log(f"[otsu] tissue fraction={float((tissue_mask > 0).mean()):.3f}")
     else:
         raise ValueError(f"Unknown tissue_detector: {tissue_detector!r} (use 'grandqc' or 'otsu')")
 
@@ -373,11 +438,13 @@ def tile_slide(
 
     rng = np.random.RandomState(seed)
     if max_tiles and len(candidates) > max_tiles:
+        log(f"Subsampling {len(candidates)} -> {max_tiles} (seed={seed}) ...")
         idx = rng.choice(len(candidates), size=max_tiles, replace=False)
         candidates = [candidates[i] for i in sorted(idx)]
 
     out_slide_dir = Path(out_dir) / svs_path.name
     out_slide_dir.mkdir(parents=True, exist_ok=True)
+    log(f"Saving coords.npy + metadata.json -> {out_slide_dir} ...")
 
     coords = np.array(candidates, dtype=np.int32)
     np.save(out_slide_dir / "coords.npy", coords)
@@ -408,12 +475,19 @@ def tile_slide(
 
         tiles_dir = out_slide_dir / "tiles"
         tiles_dir.mkdir(exist_ok=True)
-        for x0, y0 in candidates:
+        log(f"Saving {len(candidates)} tile PNGs -> {tiles_dir} ...")
+        for i, (x0, y0) in enumerate(_tqdm(candidates, desc="[tiles]", unit="tile")):
             patch = extract_tile(slide, int(x0), int(y0), level, level_downsample, step_l0, tile_size)
             Image.fromarray(patch).save(tiles_dir / f"{x0}_{y0}.png")
+            if (i + 1) % 500 == 0:
+                log(f"[tiles] {i + 1}/{len(candidates)} ...")
 
     slide.close()
 
+    log(
+        f"DONE {svs_path.name}: kept {len(candidates)} tiles "
+        f"in {time.time() - t_start:.1f}s -> {out_slide_dir}"
+    )
     print(
         f"{svs_path.name}: native_mpp={native_mpp:.4f}, level={level} "
         f"(mpp={level_mpp:.4f}), tissue_detector={tissue_detector}, "
@@ -460,7 +534,7 @@ def main():
         default=str(DEFAULT_GRANDQC_WEIGHTS),
         help="Path to GrandQC Tissue_Detection_MPP10.pth (download from https://zenodo.org/records/14507273)",
     )
-    parser.add_argument("--device", type=str, default="cpu", help="cpu or cuda:0 (GrandQC model device)")
+    parser.add_argument("--device", type=str, default="auto", help="auto (default: cuda:0 if GPU available else cpu), cpu, or cuda:0/cuda:1 (falls back to cpu with a warning if no GPU)")
     args = parser.parse_args()
 
     tile_slide(
