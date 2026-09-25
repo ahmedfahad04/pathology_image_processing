@@ -365,13 +365,13 @@ macenko_normalization: {Io: 240, alpha: 1, beta: 0.15}
 
 ### `output/misc/`
 
-| File                              | Content                                                   |
-| --------------------------------- | --------------------------------------------------------- |
-| `tcga_blca_slides.tsv`          | TCGA BLCA slide list (file_name + file_id mapping)        |
-| `tcga_blca_file_names.txt`      | Plain file-name list for batch fetching                   |
-| `tcga_blca_file_names.csv`      | CSV version of file-name list                             |
-| `cbioportal_summary_all.csv`    | Cohort-wide cBioPortal FGFR3 summary                      |
-| `README_cBioPortal.md`          | cBioPortal data documentation                             |
+| File                           | Content                                            |
+| ------------------------------ | -------------------------------------------------- |
+| `tcga_blca_slides.tsv`       | TCGA BLCA slide list (file_name + file_id mapping) |
+| `tcga_blca_file_names.txt`   | Plain file-name list for batch fetching            |
+| `tcga_blca_file_names.csv`   | CSV version of file-name list                      |
+| `cbioportal_summary_all.csv` | Cohort-wide cBioPortal FGFR3 summary               |
+| `README_cBioPortal.md`       | cBioPortal data documentation                      |
 
 ### `output/preprocessed/`
 

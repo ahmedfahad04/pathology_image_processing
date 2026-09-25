@@ -314,6 +314,7 @@
                     <tr><th>Status</th><td id="in-status"><span class="kv-empty">—</span></td></tr>
                     <tr><th>Hotspot / Protein</th><td id="in-hotspot" class="kv-empty">—</td></tr>
                     <tr><th>Mutation type</th><td id="in-muttype" class="kv-empty">—</td></tr>
+                    <tr><th>Variant type</th><td id="in-varianttype" class="kv-empty">—</td></tr>
                     <tr><th>Genomic</th><td id="in-genomic" class="kv-empty">—</td></tr>
                     <tr><th>VAF (Alt/Ref)</th><td id="in-vaf" class="kv-empty">—</td></tr>
                     <tr><th>Keyword</th><td id="in-keyword" class="kv-empty">—</td></tr>
@@ -1004,6 +1005,7 @@
             document.getElementById('in-genomic').innerHTML = '<span class="kv-empty">loading…</span>';
             document.getElementById('in-vaf').innerHTML = entry.VAF ? `<span class="val-strong" style="font-size:16px;color:#b71c1c">${parseFloat(entry.VAF).toFixed(4)}</span> <span class="sub" style="font-size:12px">(Alt <b style="color:#0d47a1">${entry.tumorAltCount||'?'}</b> / Ref <b style="color:#0d47a1">${entry.tumorRefCount||'?'}</b>)</span>` : '<span class="kv-empty">—</span>';
             document.getElementById('in-muttype').innerHTML = '<span class="kv-empty">loading…</span>';
+            document.getElementById('in-varianttype').innerHTML = '<span class="kv-empty">loading…</span>';
             document.getElementById('in-keyword').innerHTML = '<span class="kv-empty">loading…</span>';
             document.getElementById('in-rsem').innerHTML = entry.FGFR3_RSEM ? `<span class="val-strong" style="color:#0d47a1;font-size:16px">${entry.FGFR3_RSEM}</span>` : '<span class="kv-empty">—</span>';
             document.getElementById('in-cna').innerHTML = entry.FGFR3_CNA ? fmtVal(entry.FGFR3_CNA) : '<span class="kv-empty">—</span>';
@@ -1047,7 +1049,8 @@
                 const det = (summaryData.FGFR3_mutation_details && summaryData.FGFR3_mutation_details[0]) || null;
                 if(det){
                     document.getElementById('in-genomic').innerHTML = `<span class="val-mono">chr${det.chr||'?'}:${det.startPosition||'?'} ${det.referenceAllele||''}→${det.variantAllele||''}</span>`;
-                    document.getElementById('in-muttype').innerHTML = `<span class="val-strong">${det.mutationType || det.variantType || '—'}</span>`;
+                    document.getElementById('in-muttype').innerHTML = `<span class="val-strong">${det.mutationType || '—'}</span>`;
+                    document.getElementById('in-varianttype').innerHTML = `<span class="val-mono">${det.variantType || '—'}</span>`;
                     document.getElementById('in-keyword').innerHTML = `<span class="val-strong" style="color:#4a148c">${det.keyword || '—'}</span>`;
                     // VAF refine
                     if(det.tumorAltCount!==undefined){
@@ -1062,6 +1065,7 @@
                 } else {
                     document.getElementById('in-genomic').innerHTML='<span class="kv-empty">— (WT, no FGFR3 record)</span>';
                     document.getElementById('in-muttype').innerHTML='<span class="kv-empty">—</span>';
+                    document.getElementById('in-varianttype').innerHTML='<span class="kv-empty">—</span>';
                     document.getElementById('in-keyword').innerHTML='<span class="kv-empty">—</span>';
                     document.getElementById('loc-genomic').innerHTML='<span class="kv-empty">— (WT)</span>';
                     document.getElementById('loc-protein').innerHTML='<span class="kv-empty">— (WT)</span>';
@@ -1086,6 +1090,7 @@
                 document.getElementById('inspect-raw').textContent = 'No summary.json found — showing manifest only. (Folder may be newly added or renamed.)\nEntry:\n'+JSON.stringify(entry,null,2);
                 document.getElementById('in-genomic').innerHTML='<span class="kv-empty">(summary.json not found)</span>';
                 document.getElementById('in-muttype').innerHTML='<span class="kv-empty">—</span>';
+                document.getElementById('in-varianttype').innerHTML='<span class="kv-empty">—</span>';
                 document.getElementById('in-keyword').innerHTML='<span class="kv-empty">—</span>';
                 document.getElementById('in-tmb').innerHTML='<span class="kv-empty">—</span>';
                 document.getElementById('in-files').innerHTML=`<span class="kv-empty">summary.json not fetched — try <code>${urls.summary}</code></span>`;
