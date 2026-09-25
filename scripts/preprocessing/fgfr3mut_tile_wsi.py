@@ -320,6 +320,39 @@ def build_tissue_mask_grandqc(
     return tissue_mask, thumb_downsample
 
 
+def crop_tile_mask(
+    tissue_mask: np.ndarray,
+    thumb_downsample: float,
+    x0: int,
+    y0: int,
+    step_l0: int,
+    tile_size: int,
+) -> np.ndarray:
+    """Per-tile mask: crop the slide-level mask over the tile's level-0
+    footprint and resize to tile_size x tile_size.
+
+    The crop box uses the exact same level-0 -> mask-pixel mapping as
+    tissue_fraction_in_cell, so `(mask > 0).mean()` over the pre-resize
+    crop equals the tissue fraction that decided whether the tile was kept.
+
+    The mask is far coarser than the tile (e.g. ~22 mask px covering a
+    224x224 tile at MPP10 GrandQC), so the crop is upscaled with linear
+    interpolation and re-binarized at 127 to avoid nearest-neighbour
+    blockiness while keeping the output strictly 0/255.
+    """
+    mx0 = int(x0 / thumb_downsample)
+    my0 = int(y0 / thumb_downsample)
+    mx1 = max(mx0 + 1, int((x0 + step_l0) / thumb_downsample))
+    my1 = max(my0 + 1, int((y0 + step_l0) / thumb_downsample))
+
+    cell = tissue_mask[my0:my1, mx0:mx1]
+    if cell.size == 0:
+        return np.zeros((tile_size, tile_size), dtype=np.uint8)
+
+    resized = cv2.resize(cell, (tile_size, tile_size), interpolation=cv2.INTER_LINEAR)
+    return np.where(resized >= 127, 255, 0).astype(np.uint8)
+
+
 def tissue_fraction_in_cell(
     tissue_mask: np.ndarray,
     thumb_downsample: float,
@@ -401,9 +434,12 @@ def tile_slide(
 ) -> Path:
     """Run the full FGFR3MUT-style tiling pipeline on one slide.
 
-    Output: <out_dir>/<slide_stem>/coords.npy  (n_tiles, 2) int32 level-0 (x0, y0)
-            <out_dir>/<slide_stem>/mask.npy     (uint8 0/255 tissue mask, thumbnail res)
-            <out_dir>/<slide_stem>/mask.png     (same mask, viewable)
+    Output: <out_dir>/<slide_stem>/coords.npy      (n_tiles, 2) int32 level-0 (x0, y0)
+            <out_dir>/<slide_stem>/tile_masks.npy  (n_tiles, tile_size, tile_size) uint8 0/255,
+                                                   index-aligned with coords.npy
+            <out_dir>/<slide_stem>/tile_masks/<x0>_<y0>.png  (same masks, viewable)
+            <out_dir>/<slide_stem>/mask.npy        (uint8 0/255 tissue mask, thumbnail res)
+            <out_dir>/<slide_stem>/mask.png        (same mask, viewable)
             <out_dir>/<slide_stem>/metadata.json
             optionally <out_dir>/<slide_stem>/tiles/*.png if save_pngs=True
     """
@@ -446,10 +482,26 @@ def tile_slide(
 
     out_slide_dir = Path(out_dir) / svs_path.name
     out_slide_dir.mkdir(parents=True, exist_ok=True)
-    log(f"Saving coords.npy + mask.npy + mask.png + metadata.json -> {out_slide_dir} ...")
+    log(f"Saving coords.npy + tile_masks + mask.npy + mask.png + metadata.json -> {out_slide_dir} ...")
 
     coords = np.array(candidates, dtype=np.int32)
     np.save(out_slide_dir / "coords.npy", coords)
+
+    log(f"Cropping {len(candidates)} per-tile masks ({tile_size}x{tile_size}) ...")
+    tile_masks = np.stack(
+        [
+            crop_tile_mask(tissue_mask, thumb_downsample, int(x0), int(y0), step_l0, tile_size)
+            for x0, y0 in _tqdm(candidates, desc="[tile_masks]", unit="tile")
+        ],
+        axis=0,
+    ) if candidates else np.zeros((0, tile_size, tile_size), dtype=np.uint8)
+    np.save(out_slide_dir / "tile_masks.npy", tile_masks)
+
+    tile_masks_dir = out_slide_dir / "tile_masks"
+    tile_masks_dir.mkdir(exist_ok=True)
+    for i, (x0, y0) in enumerate(candidates):
+        cv2.imwrite(str(tile_masks_dir / f"{x0}_{y0}.png"), tile_masks[i])
+    log(f"Saved tile_masks.npy {tile_masks.shape} + {len(candidates)} PNGs -> {tile_masks_dir}")
 
     np.save(out_slide_dir / "mask.npy", tissue_mask)
     cv2.imwrite(str(out_slide_dir / "mask.png"), tissue_mask)
@@ -466,6 +518,8 @@ def tile_slide(
         "nb_tiles": len(candidates),
         "mask_shape": list(tissue_mask.shape),
         "mask_thumb_downsample": thumb_downsample,
+        "tile_masks_shape": list(tile_masks.shape),
+        "tile_masks_resolution": "tile_size (upsampled from thumbnail mask, binarized at 127)",
         "sampling_mode": {"mode": "random", "seed": seed} if len(candidates) > (max_tiles or 0) else {"mode": "all"},
         "slide_size": list(slide.dimensions),
         "tissue_detector": (
