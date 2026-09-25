@@ -402,6 +402,8 @@ def tile_slide(
     """Run the full FGFR3MUT-style tiling pipeline on one slide.
 
     Output: <out_dir>/<slide_stem>/coords.npy  (n_tiles, 2) int32 level-0 (x0, y0)
+            <out_dir>/<slide_stem>/mask.npy     (uint8 0/255 tissue mask, thumbnail res)
+            <out_dir>/<slide_stem>/mask.png     (same mask, viewable)
             <out_dir>/<slide_stem>/metadata.json
             optionally <out_dir>/<slide_stem>/tiles/*.png if save_pngs=True
     """
@@ -444,10 +446,13 @@ def tile_slide(
 
     out_slide_dir = Path(out_dir) / svs_path.name
     out_slide_dir.mkdir(parents=True, exist_ok=True)
-    log(f"Saving coords.npy + metadata.json -> {out_slide_dir} ...")
+    log(f"Saving coords.npy + mask.npy + mask.png + metadata.json -> {out_slide_dir} ...")
 
     coords = np.array(candidates, dtype=np.int32)
     np.save(out_slide_dir / "coords.npy", coords)
+
+    np.save(out_slide_dir / "mask.npy", tissue_mask)
+    cv2.imwrite(str(out_slide_dir / "mask.png"), tissue_mask)
 
     metadata = {
         "svs_path": str(svs_path),
@@ -459,6 +464,8 @@ def tile_slide(
         "tile_size": tile_size,
         "min_tissue_fraction": min_tissue_fraction,
         "nb_tiles": len(candidates),
+        "mask_shape": list(tissue_mask.shape),
+        "mask_thumb_downsample": thumb_downsample,
         "sampling_mode": {"mode": "random", "seed": seed} if len(candidates) > (max_tiles or 0) else {"mode": "all"},
         "slide_size": list(slide.dimensions),
         "tissue_detector": (
