@@ -185,25 +185,25 @@ This is a **second, independent Owkin codebase** using `Sigmoid` (not `ReLU`) as
 
 *Sources: paper Methods pp.8–9 ("Preprocessing of whole-slide images", "FGFR3 mutation prediction"), Fig. 1a, References 24–28; `fgfr3mut/chowder.py`, `fgfr3mut/dataset.py`, `fgfr3mut/utils.py`, `fgfr3mut/run_inference.py`, `README.md` as present in this repo on 2026-09-25; downloaded HuggingFace artifact `output/data_fgfr3_mini/` (features.npy, mask.npy, metadata.json, model checkpoints, filtered_slides_tcga.xlsx, mutations_blca_tcga_pancancer_atlas_cbioportal.txt) inspected directly on 2026-09-25; `github.com/owkin/HistoSSLscaling` (chowder.py, torch_trainer.py, ibot_vit.py, constants.py, test_ncv.yaml, README.md, LICENSE.txt) cloned and inspected directly on 2026-09-25.*
 
-
-
 # Extension goal: mutation-subtype + WHO-grade classification (proposed — not yet implemented)
 
 This section is a **plan**, not a verified reproduction like §1–7 above. Target: extend the existing binary FGFR3 MUT/WT Chowder pipeline into a system that also predicts (a) **which** FGFR3 hotspot is present, and (b) the tumor's **WHO grade** (1/2/3, or the WHO'04 low/high-grade scheme TCGA actually uses) — both directly from the WSI, reusing the tiling + feature-extraction stages already built in this repo.
 
 **Ground-truth constraint that shapes everything below:** FGFR3 status/hotspot comes from bulk SNaPshot PCR / cBioPortal calls — **one label per slide/sample**, never per-cell or per-pixel (§2a). No public dataset gives per-nucleus genotype ground truth for this task. Every paper cited below (including the one this repo already reproduces) trains and validates at the **slide level** with **weak supervision** (MIL) and treats the resulting attention map as a correlational visualization, not a verified per-cell call. WHO grade labels are also recorded per sample (TCGA clinical fields, already parsed into this repo's `data/*/cbioportal_*_sample_clinical.json`, surfaced in `viewer.html`'s "Grade" field) — but unlike genotype, grade *is* a directly visible histomorphological property (nuclear pleomorphism, architecture, mitoses), so it is the better-grounded of the two targets.
 
+> **Correction (2026-09-26):** an earlier draft of this section read "which mutant" as **which hotspot/protein-change** (e.g. `Y373C` vs `S249C`). That is wrong. Per the user's clarification (screenshot of `viewer.html`'s FGFR3 card), "mutation type" means the **MAF-style variant-consequence class** — the `mutationType`/`variantType` cBioPortal fields (`Missense_Mutation`, `Nonsense_Mutation`, `Frame_Shift_Del`, …; `SNP`, `DEL`, `INS`, …), **not** the specific hotspot/protein-change identity. §8a/§8c/§9 below are corrected to target this field. The hotspot/protein-change identity (`Y373C`, `S249C`, …) is a *different, harder* target — see the feasibility note in §8c, Stage 2b.
+
 ### 8a. Which paper covers which step
 
-| Pipeline step                                                               | Paper to follow                                                                                                                                        | Why this one                                                                                                                                                                                                                                                                                 |
-| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Tissue detection + tiling                                                   | *(unchanged — already implemented, §Step 1–2 above)*                                                                                              | No new paper needed;`fgfr3mut_tile_wsi.py` already reproduces this stage.                                                                                                                                                                                                                  |
-| Frozen tile-embedding backbone                                              | Saillard et al. (H-optimus-0, ref. 25) — already used; benchmark against UNI/CONCH per the foundation-model MIL survey¹ if H-optimus-0 underperforms | Survey¹ shows UNI/CONCH tile embeddings measurably improve downstream MIL accuracy over smaller backbones for grading/biomarker tasks — worth an ablation, not a mandatory swap.                                                                                                           |
-| Binary FGFR3 MUT/WT (existing task)                                         | Bannier et al. 2024² (already reproduced, §1–7)                                                                                                     | No change — this is the working baseline.                                                                                                                                                                                                                                                   |
-| **Which mutant / hotspot subtype** (new)                              | Hierarchical Deep MIL,*Medical Image Analysis*³                                                                                                     | Same clinical setting (bladder WSI) and same core problem — predicting**multiple distinct gene-mutation classes** (ATM, PIK3CA, ERBB2, FGFR3, ERCC2) from one MIL model instead of one binary model per gene. Directly transferable: replace "5 genes" with "N FGFR3 hotspot groups." |
-| **WHO grade** (new)                                                   | NMGrad⁴ (primary) + "A Novel Self-Learning Framework for Bladder Cancer Grading"⁵ + multi-scale pyramidal CNN⁶                                      | See §8b for what each contributes specifically.                                                                                                                                                                                                                                             |
-| Joint mutation+grade model (optional, if you want one model instead of two) | PA-MIL⁷                                                                                                                                               | Purpose-built for coupling a genotype task with a phenotype/morphology task in one MIL model with a shared attention backbone — exactly this repo's mutation+grade combination.                                                                                                             |
-| Multi-branch, per-class attention/interpretability                          | CLAM⁸                                                                                                                                                 | Gives one attention branch*per output class* (per hotspot, per grade) out of the box — a natural drop-in replacement for Chowder's single-branch scorer when the output is no longer binary.                                                                                              |
+| Pipeline step                                                               | Paper to follow                                                                                                                                        | Why this one                                                                                                                                                                                                                                                                                               |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tissue detection + tiling                                                   | *(unchanged — already implemented, §Step 1–2 above)*                                                                                              | No new paper needed;`fgfr3mut_tile_wsi.py` already reproduces this stage.                                                                                                                                                                                                                                |
+| Frozen tile-embedding backbone                                              | Saillard et al. (H-optimus-0, ref. 25) — already used; benchmark against UNI/CONCH per the foundation-model MIL survey¹ if H-optimus-0 underperforms | Survey¹ shows UNI/CONCH tile embeddings measurably improve downstream MIL accuracy over smaller backbones for grading/biomarker tasks — worth an ablation, not a mandatory swap.                                                                                                                         |
+| Binary FGFR3 MUT/WT (existing task)                                         | Bannier et al. 2024² (already reproduced, §1–7)                                                                                                     | No change — this is the working baseline.                                                                                                                                                                                                                                                                 |
+| **FGFR3 mutation TYPE** (new — corrected target, see note above)     | Hierarchical Deep MIL,*Medical Image Analysis*³                                                                                                     | Same clinical setting (bladder WSI) and same core problem — predicting**multiple distinct mutation classes** from one MIL model instead of one binary model. Directly transferable: replace "5 genes" with "N MAF `mutationType` classes." Class set + feasibility numbers are in §8c, Stage 2b. |
+| **WHO grade** (new)                                                   | NMGrad⁴ (primary) + "A Novel Self-Learning Framework for Bladder Cancer Grading"⁵ + multi-scale pyramidal CNN⁶                                      | See §8b for what each contributes specifically.                                                                                                                                                                                                                                                           |
+| Joint mutation+grade model (optional, if you want one model instead of two) | PA-MIL⁷                                                                                                                                               | Purpose-built for coupling a genotype task with a phenotype/morphology task in one MIL model with a shared attention backbone — exactly this repo's mutation+grade combination.                                                                                                                           |
+| Multi-branch, per-class attention/interpretability                          | CLAM⁸                                                                                                                                                 | Gives one attention branch*per output class* (per hotspot, per grade) out of the box — a natural drop-in replacement for Chowder's single-branch scorer when the output is no longer binary.                                                                                                            |
 
 ### 8b. What NMGrad actually does, concretely (since "weakly-supervised MIL for grading" alone under-specifies it)
 
@@ -234,12 +234,30 @@ WSI
  │
  ├─ Stage 2a (existing, unchanged): FGFR3 MUT/WT — Chowder MIL, binary, Bannier et al.²
  │
- ├─ Stage 2b (NEW): FGFR3 hotspot subtype — Chowder/CLAM MIL, softmax, N classes
- │    Follow hierarchical-MIL paper³'s recipe: one MIL model, multi-class output instead
- │    of one-model-per-gene. Class set: group rare hotspots (§2c above lists 11 activating
- │    hotspots; this repo's manifest shows only 126 MUT slides total — too few to support
- │    11 separate classes) into a small number of clinically meaningful groups first
- │    (e.g. the paper's own Fig. 3 hotspot groupings), not one class per single hotspot.
+ ├─ Stage 2b (NEW): FGFR3 mutation TYPE — Chowder/CLAM MIL, softmax, N classes
+ │    Target = the MAF `mutationType`/`variantType` field (Missense_Mutation, Nonsense_Mutation,
+ │    Frame_Shift_Del, …; SNP, DEL, INS, …) — i.e. exactly the "Mutation type"/"Variant type"
+ │    fields boxed in the user's viewer.html screenshot — NOT the hotspot/protein-change
+ │    identity (Y373C, S249C, …; that's a separate field, "Hotspot / Protein").
+ │
+ │    [verified from data, 2026-09-26] Directly counted from this repo's own
+ │    data/cbioportal_blca_tcga_pan_can_atlas_2018_FGFR3_mutations_cohort.json (68 FGFR3-mutated
+ │    TCGA samples, the same cohort behind this repo's labels):
+ │      mutationType: Missense_Mutation=65, Frame_Shift_Del=2, Nonsense_Mutation=1
+ │      variantType:  SNP=66, DEL=2
+ │    i.e. 95%+ of real samples are the single class Missense_Mutation/SNP. A balanced
+ │    3-class (or even 2-class) classifier is NOT feasible on TCGA alone — only 3 total
+ │    non-missense examples exist in the whole public cohort. Two honest paths forward:
+ │      (a) reframe as binary "canonical missense/SNP" vs. "disruptive/other" (nonsense +
+ │          frameshift + indel + splice pooled into one rare class) — still severely
+ │          imbalanced (3 vs 65) but at least a defined 2-class problem; or
+ │      (b) pool in the paper's private 391-slide Erlangen discovery cohort (§1) and/or
+ │          additional cBioPortal bladder studies beyond blca_tcga_pan_can_atlas_2018 to
+ │          collect enough non-missense examples before attempting real multi-class training.
+ │    Hotspot/protein-change identity (Y373C, S249C, …) is a separate, harder target if
+ │    ever wanted later: the same 68-sample cohort has 21 unique protein-change values,
+ │    most singletons (S249C alone is 32/68 = 47%) — effectively infeasible as supervised
+ │    multi-class without a much larger cohort.
  │
  ├─ Stage 2c (NEW): WHO grade — nested-attention MIL, softmax, grade classes
  │    Follow NMGrad⁴'s nested tile→region→slide aggregation (§8b point 2). Labels already
@@ -262,7 +280,7 @@ WSI
 
 1. Foundation-model + MIL benchmarking survey — multi-cancer comparison of tile-embedding backbones (CTransPath, PathoDuet, PLIP, CONCH, UNI) across MIL methods for grading/biomarker/genotype tasks. "When multiple instance learning meets foundation models: Advancing histological whole slide image analysis," *Medical Image Analysis* (ScienceDirect).
 2. Bannier et al., *AI allows pre-screening of FGFR3 mutational status using routine histology slides of muscle-invasive bladder cancer*, **Nature Communications** 15:10914 (2024), doi:10.1038/s41467-024-55331-6 — the paper already reproduced in §1–7.
-3. "Histopathological bladder cancer gene mutation prediction with hierarchical deep multiple-instance learning," *Medical Image Analysis* (ScienceDirect) — multi-gene (ATM, PIK3CA, ERBB2, FGFR3, ERCC2) MIL from bladder WSIs; template for the multi-class hotspot-subtype head (Stage 2b).
+3. "Histopathological bladder cancer gene mutation prediction with hierarchical deep multiple-instance learning," *Medical Image Analysis* (ScienceDirect) — multi-gene (ATM, PIK3CA, ERBB2, FGFR3, ERCC2) MIL from bladder WSIs; template for the multi-class mutation-TYPE head (Stage 2b).
 4. "NMGrad: Advancing Histopathological Bladder Cancer Grading with Weakly Supervised Deep Learning," arXiv:2405.15275 / *PMC11428615* — nested urothelium-filtered, region-hierarchical attention-MIL for WHO'04 NMIBC grading; template for Stage 0.5 + Stage 2c.
 5. "A Novel Self-Learning Framework for Bladder Cancer Grading Using Histopathological Images," arXiv:2106.13559 — self-training with pseudo-labels for grading under limited annotation; relevant if the labeled-grade cohort turns out too small for direct supervision.
 6. "Precise grading of non-muscle invasive bladder cancer with multi-scale pyramidal CNN," *Scientific Reports* (2024), doi:10.1038/s41598-024-77101-6 — multi-scale/finer-detail fusion for grading; template for the optional PanNuke nuclear-morphometrics add-on in Stage 2c.
@@ -270,3 +288,32 @@ WSI
 8. Lu, Williamson, Chen, Chen, Barbieri & Mahmood, *Data Efficient and Weakly Supervised Computational Pathology on Whole Slide Images* (CLAM), arXiv:2004.09666, **Nature Biomedical Engineering** (2021) — multi-branch attention-MIL architecture; usable as a drop-in multi-class/multi-branch alternative to Chowder for Stages 2b/2c.
 
 *This section written 2026-09-26, based on a literature search conducted the same day; none of steps 8c has been implemented or validated in this repo yet.*
+
+---
+
+## 9. Is this actually a novel idea?
+
+**Verdict: partially.** Each individual piece already has a published precedent — the *specific combination* proposed in §8 does not, as far as a targeted search on 2026-09-26 could find.
+
+**Not novel (already solved, cited above):**
+
+- Binary FGFR3 MUT/WT prediction from bladder WSI — Bannier et al.² (this repo's baseline), Loeffler et al.¹¹, Woerl et al.¹².
+- WHO-grade prediction from bladder WSI via MIL — NMGrad⁴, self-learning framework⁵, multi-scale pyramidal CNN⁶.
+- Multi-class *specific-mutation-subtype* classification from WSI as a general technique — demonstrated for **other** genes/cancers: papillary thyroid carcinoma driver-mutation subtyping (BRAF/RET/etc.)¹³, EGFR exon-level subtype classification in lung adenocarcinoma¹⁴.
+
+**Appears genuinely novel (no matching published pipeline found in this search) — corrected 2026-09-26 to the actual target (MAF `mutationType`, not hotspot identity, see §8 correction note):**
+
+1. Classifying **FGFR3 mutation TYPE** (`Missense_Mutation` / `Nonsense_Mutation` / `Frame_Shift_Del` / etc. — the variant-consequence class, not which gene or which hotspot) directly from bladder-cancer WSI. A dedicated search for this exact framing ("mutation type" as a classification *target*, distinct from "which gene is mutated") found no matching paper for **any** cancer type, let alone bladder/FGFR3 — existing WSI-genomics literature (Bannier/Loeffler/Woerl for FGFR3; the NSCLC¹⁵, breast¹⁶, and AML¹⁷ mutation-prediction papers) all predict **presence of a mutation in a given gene**, not its MAF consequence class. The closest adjacent precedent is FLT3-ITD detection in AML¹⁷ (predicting one specific structural-variant *type*, an internal tandem duplication/insertion, vs. wild-type) — conceptually closer to "variant type" classification than any bladder/FGFR3 paper, but still a different gene, cancer, and framing.
+2. A **single pipeline predicting both FGFR3 mutation type and WHO grade** from the same WSI tiling/embedding backbone. No cited paper does both — NMGrad⁴ only grades, Bannier/Loeffler/Woerl only call FGFR3 binary status. Nothing found couples a genotype-consequence-class head with a grade head for bladder cancer.
+
+**Feasibility caveat that qualifies the novelty claim:** §8c, Stage 2b shows this repo's own TCGA cohort has only 3 non-missense examples out of 68 FGFR3-mutant samples. Part of *why* this specific classification appears unpublished may simply be that it is barely trainable on public data as a balanced multi-class problem — "unpublished" here is not strong evidence the idea is good, just that the exact framing doesn't already exist.
+
+**Proof standard, honestly stated:** this is a live web-search check (§ conducted 2026-09-26), not a systematic literature review (PubMed/arXiv/Google Scholar exhaustive query + patent search). It is evidence the *specific* combination in §8 is currently unpublished, not proof no one is doing it privately or that it would work — the ground-truth-granularity caveat in §8 (bulk, slide-level labels only) still applies, and going from "unpublished" to "clinically validated" is the actual hard part.
+
+11. Loeffler et al., *Artificial Intelligence–based Detection of FGFR3 Mutational Status Directly from Routine Histology in Bladder Cancer*, ScienceDirect / *Eur Urol Focus* (2021).
+12. Woerl et al., *Using deep learning to identify bladder cancers with FGFR-activating mutations from histology images*, *Cancer Medicine* (2021), PMC8290253.
+13. *Classifying driver mutations of papillary thyroid carcinoma on whole slide image: an automated workflow applying deep convolutional neural network*, PMC11573888. (Multi-class *which-gene* precedent, not mutation-type-class — kept for context.)
+14. *Predicting EGFR Mutation in LUAD from Histopathological Whole-Slide Images Using Pretrained Foundation Model and Transfer Learning: An Indian Cohort Study*, arXiv:2508.01352. (Same caveat as 13.)
+15. Coudray et al., *Classification and mutation prediction from non–small cell lung cancer histopathology images using deep learning*, *Nature Medicine* (2018) — predicts gene-mutation presence, not MAF consequence class.
+16. *Genetic mutation and biological pathway prediction based on whole slide images in breast carcinoma using deep learning*, PMC8460699 — same, breast cancer.
+17. *Annotation-free deep learning for predicting gene mutations from whole slide images of acute myeloid leukemia*, *npj Precision Oncology* (2025) — includes FLT3-ITD (an insertion/duplication *type*) prediction; closest adjacent precedent for "variant type" as the target, but different gene/cancer/framing.
