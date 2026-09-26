@@ -11,11 +11,11 @@
 
 ## 1. Training cohort (paper Fig. 1a, Methods "Datasets description")
 
-| Cohort | n slides | Role |
-|---|---|---|
-| MIBC I | 239 | Training (discovery) |
-| NMIBC I | 155 | Training (discovery) |
-| **Total training** | **391** | 23% FGFR3-mutant |
+| Cohort                   | n slides      | Role                 |
+| ------------------------ | ------------- | -------------------- |
+| MIBC I                   | 239           | Training (discovery) |
+| NMIBC I                  | 155           | Training (discovery) |
+| **Total training** | **391** | 23% FGFR3-mutant     |
 
 Both cohorts are private (Erlangen hospital, FFPE H&E). They are **not** included in this repo or its HuggingFace download — only the 125 resulting model checkpoints and the public TCGA validation features are distributed. If reproducing training from scratch, you must substitute your own labeled WSI cohort (e.g. TCGA-BLCA training split) with the same file layout described below.
 
@@ -27,20 +27,20 @@ Validation cohorts (not used for gradient updates): TCGA MIBC (n=307 after QC), 
 
 ### 2a. Raw input (per patient/slide)
 
-| File | Type | Produced by | Notes |
-|---|---|---|---|
-| `<slidename>.svs` (or equivalent WSI format) | Whole-slide image, ~100,000×100,000 px, RGB, H&E-stained FFPE section | Scanner (paper: all slides digitized on the same scanner to control stain variance) | Not shipped in this repo. TCGA slides are `.svs`, downloadable from `https://portal.gdc.cancer.gov/`. |
-| SNaPshot PCR trace / genotype call | Lab assay output → binary label | Wet-lab (multiplex PCR, exons 7/10/15, 9 SNaPshot primers) | Ground truth for Erlangen cohorts. Detects 11 activating hotspots: `R248C, S249C, G372C, G382R, S373C, Y375C, A393E, K652E, K652Q, K652M, K652T`. |
-| `mutations_blca_tcga_pancancer_atlas_cbioportal.txt` | Tab-separated text (`pd.read_csv(sep="\t")`) | Downloaded from cBioPortal `blca_tcga_pan_can_atlas_2018` | Ground truth for TCGA. Column `SAMPLE_ID` (first 12 chars = patient ID), column `FGFR3` (mutation string, renamed to `fgfr3_mutation` in `dataset.py`). |
-| `filtered_slides_tcga.xlsx` | Excel, `index_col=0` | Internal pathology review (M.E.) | Column `DX_REV_Summary` ∈ {`MIBC`, `NMIBC - pT1`, `NMIBC - pTa`}; used to keep only MIBC (or NMIBC) TCGA cases — `dataset.py:TCGADataset.get_ids_to_keep()`. |
+| File                                                   | Type                                                                   | Produced by                                                                         | Notes                                                                                                                                                                   |
+| ------------------------------------------------------ | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<slidename>.svs` (or equivalent WSI format)         | Whole-slide image, ~100,000×100,000 px, RGB, H&E-stained FFPE section | Scanner (paper: all slides digitized on the same scanner to control stain variance) | Not shipped in this repo. TCGA slides are`.svs`, downloadable from `https://portal.gdc.cancer.gov/`.                                                                |
+| SNaPshot PCR trace / genotype call                     | Lab assay output → binary label                                       | Wet-lab (multiplex PCR, exons 7/10/15, 9 SNaPshot primers)                          | Ground truth for Erlangen cohorts. Detects 11 activating hotspots:`R248C, S249C, G372C, G382R, S373C, Y375C, A393E, K652E, K652Q, K652M, K652T`.                      |
+| `mutations_blca_tcga_pancancer_atlas_cbioportal.txt` | Tab-separated text (`pd.read_csv(sep="\t")`)                         | Downloaded from cBioPortal`blca_tcga_pan_can_atlas_2018`                          | Ground truth for TCGA. Column`SAMPLE_ID` (first 12 chars = patient ID), column `FGFR3` (mutation string, renamed to `fgfr3_mutation` in `dataset.py`).          |
+| `filtered_slides_tcga.xlsx`                          | Excel,`index_col=0`                                                  | Internal pathology review (M.E.)                                                    | Column`DX_REV_Summary` ∈ {`MIBC`, `NMIBC - pT1`, `NMIBC - pTa`}; used to keep only MIBC (or NMIBC) TCGA cases — `dataset.py:TCGADataset.get_ids_to_keep()`. |
 
 ### 2b. Preprocessing intermediate outputs (per slide)
 
-| File | Type | Shape / format |
-|---|---|---|
-| `features/<slidename>.svs/mask.npy` **[verified from data]** | NumPy float32 array, continuous tissue-probability map (not binarized) | e.g. `(4832, 6912)` for one mini-dataset slide — matches the WSI's pyramid `level_dimensions["13"]`, i.e. the mask is stored at ~1.82 MPP, not at tile resolution. Ships in the HuggingFace download alongside `features.npy` but is **not read anywhere in `fgfr3mut/` public code** (`dataset.py` only globs `features.npy`). Useful for visualizing/recomputing the ≥60%-tissue tile-keep rule yourself. |
-| `features/<slidename>.svs/metadata.json` **[verified from data]** | JSON | Per-slide preprocessing record — see Step 1–2 below, all fields pulled from this file. |
-| `features/<slidename>.svs/features.npy` | NumPy float array, `mmap_mode="r"`, `astype(np.float32)` | `(n_tiles, 1539)`, confirmed by direct inspection (`(4125, 1539) float32` for one slide). Columns `[:, :3]` = tile `(x, y, z)` coordinates; columns `[:, 3:]` = **1536-dim** feature embedding (so 1539 = 3 coord cols + 1536 feature dims — this resolves the paper's "1539" figure vs. the code's `in_features=1536`, they are the same thing, not a version mismatch). Parsed by `fgfr3mut/utils.py:load_raw_features_slide()`. Folder name is the **full original filename including `.svs`** (e.g. `TCGA-2F-A9KQ-01Z-00-DX1.1C8CB2DD-....svs/`), matching `TCGADataset._extract_slidename()` which reads the parent-folder name verbatim. |
+| File                                                                      | Type                                                                   | Shape / format                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `features/<slidename>.svs/mask.npy` **[verified from data]**      | NumPy float32 array, continuous tissue-probability map (not binarized) | e.g.`(4832, 6912)` for one mini-dataset slide — matches the WSI's pyramid `level_dimensions["13"]`, i.e. the mask is stored at ~1.82 MPP, not at tile resolution. Ships in the HuggingFace download alongside `features.npy` but is **not read anywhere in `fgfr3mut/` public code** (`dataset.py` only globs `features.npy`). Useful for visualizing/recomputing the ≥60%-tissue tile-keep rule yourself.                                                                                                                                                                                                                                                  |
+| `features/<slidename>.svs/metadata.json` **[verified from data]** | JSON                                                                   | Per-slide preprocessing record — see Step 1–2 below, all fields pulled from this file.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `features/<slidename>.svs/features.npy`                                 | NumPy float array,`mmap_mode="r"`, `astype(np.float32)`            | `(n_tiles, 1539)`, confirmed by direct inspection (`(4125, 1539) float32` for one slide). Columns `[:, :3]` = tile `(x, y, z)` coordinates; columns `[:, 3:]` = **1536-dim** feature embedding (so 1539 = 3 coord cols + 1536 feature dims — this resolves the paper's "1539" figure vs. the code's `in_features=1536`, they are the same thing, not a version mismatch). Parsed by `fgfr3mut/utils.py:load_raw_features_slide()`. Folder name is the **full original filename including `.svs`** (e.g. `TCGA-2F-A9KQ-01Z-00-DX1.1C8CB2DD-....svs/`), matching `TCGADataset._extract_slidename()` which reads the parent-folder name verbatim. |
 
 ### 2c. Training-time label vector
 
@@ -48,9 +48,9 @@ Produced by `fgfr3mut/dataset.py:TCGADataset.load_fgfr3_status(binarize=True)`: 
 
 ### 2d. Final output artifact
 
-| File | Type |
-|---|---|
-| `models/split_{0..24}/model_{0..4}_30_ep.pt` **[verified from data]** | PyTorch `state_dict` checkpoint, one per trained Chowder model. **25 split folders × 5 checkpoints per folder = 125 checkpoints total.** Confirmed by directly counting the downloaded `models/` tree: `split_0` … `split_24` (25 dirs), each containing `model_0_30_ep.pt` … `model_4_30_ep.pt` (5 files). Loaded with `torch.load()` / `model.load_state_dict()` (`utils.py:load_ckpt`, `run_inference.py:infer()`). State-dict keys/shapes match `Chowder(in_features=1536, n_extreme=100)` exactly: `score_model.hidden_layers.0.weight (128,1536)`, `.2.weight (1,128)`, `mlp.0.0.weight (128,200)`, `mlp.1.0.weight (64,128)`, `mlp.2.weight (1,64)`. |
+| File                                                                          | Type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `models/split_{0..24}/model_{0..4}_30_ep.pt` **[verified from data]** | PyTorch`state_dict` checkpoint, one per trained Chowder model. **25 split folders × 5 checkpoints per folder = 125 checkpoints total.** Confirmed by directly counting the downloaded `models/` tree: `split_0` … `split_24` (25 dirs), each containing `model_0_30_ep.pt` … `model_4_30_ep.pt` (5 files). Loaded with `torch.load()` / `model.load_state_dict()` (`utils.py:load_ckpt`, `run_inference.py:infer()`). State-dict keys/shapes match `Chowder(in_features=1536, n_extreme=100)` exactly: `score_model.hidden_layers.0.weight (128,1536)`, `.2.weight (1,128)`, `mlp.0.0.weight (128,200)`, `mlp.1.0.weight (64,128)`, `mlp.2.weight (1,64)`. |
 
 ---
 
@@ -124,14 +124,14 @@ Produced by `fgfr3mut/dataset.py:TCGADataset.load_fgfr3_status(binarize=True)`: 
 
 ## 5. Algorithm reference table (name → paper citation → code location)
 
-| Stage | Algorithm | Paper reference | Code location |
-|---|---|---|---|
-| Tissue detection | U-Net (paper) / **BUNet** (actual metadata field — [verified from data]) | Ronneberger et al., MICCAI 2015 (ref. 24) | External — `github.com/milesial/Pytorch-UNet` referenced by paper; actual extractor ships inside Owkin's private `classic_algos` package, not in this repo |
-| Tile feature extraction | H-optimus-0 (paper) / **iBOTViTGiant** (actual metadata field — [verified from data], see Step 3 discrepancy note) | Saillard et al. (ref. 25); Oquab et al., DINOv2, arXiv:2304.07193 (ref. 26) | External — `huggingface.co/bioptimus/H-optimus-0` referenced by paper (not in this repo) |
-| Per-tile scoring + slide aggregation | Chowder (MIL) | Courtiol, Tramel, Sanselme & Wainrib, arXiv:1802.02212 (ref. 27) | `fgfr3mut/chowder.py` (`TilesMLP`, `ExtremeLayer`, `MLP`, `Chowder`) |
-| Multi-model aggregation | Deep Ensembles | Lakshminarayanan, Pritzel & Blundell, NeurIPS 2017 (ref. 28) | `fgfr3mut/run_inference.py:infer()` (125-checkpoint loop) |
-| Loss | Binary cross-entropy | Methods, "FGFR3 mutation prediction" | Not shipped; use `torch.nn.BCEWithLogitsLoss()` on `Chowder`'s raw logit output |
-| Batching/masking | Padded-sequence MIL batching | — | `fgfr3mut/utils.py:pad_collate_fn`, `SlideFeaturesDataset` |
+| Stage                                | Algorithm                                                                                                                | Paper reference                                                             | Code location                                                                                                                                                  |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tissue detection                     | U-Net (paper) /**BUNet** (actual metadata field — [verified from data])                                           | Ronneberger et al., MICCAI 2015 (ref. 24)                                   | External —`github.com/milesial/Pytorch-UNet` referenced by paper; actual extractor ships inside Owkin's private `classic_algos` package, not in this repo |
+| Tile feature extraction              | H-optimus-0 (paper) /**iBOTViTGiant** (actual metadata field — [verified from data], see Step 3 discrepancy note) | Saillard et al. (ref. 25); Oquab et al., DINOv2, arXiv:2304.07193 (ref. 26) | External —`huggingface.co/bioptimus/H-optimus-0` referenced by paper (not in this repo)                                                                     |
+| Per-tile scoring + slide aggregation | Chowder (MIL)                                                                                                            | Courtiol, Tramel, Sanselme & Wainrib, arXiv:1802.02212 (ref. 27)            | `fgfr3mut/chowder.py` (`TilesMLP`, `ExtremeLayer`, `MLP`, `Chowder`)                                                                                 |
+| Multi-model aggregation              | Deep Ensembles                                                                                                           | Lakshminarayanan, Pritzel & Blundell, NeurIPS 2017 (ref. 28)                | `fgfr3mut/run_inference.py:infer()` (125-checkpoint loop)                                                                                                    |
+| Loss                                 | Binary cross-entropy                                                                                                     | Methods, "FGFR3 mutation prediction"                                        | Not shipped; use`torch.nn.BCEWithLogitsLoss()` on `Chowder`'s raw logit output                                                                             |
+| Batching/masking                     | Padded-sequence MIL batching                                                                                             | —                                                                          | `fgfr3mut/utils.py:pad_collate_fn`, `SlideFeaturesDataset`                                                                                                 |
 
 ---
 
@@ -151,25 +151,27 @@ Neither the paper nor the `fgfr3mut` repo states: optimizer (Adam/AdamW/SGD), le
 ### 7a. It has the same Chowder implementation — and independently confirms the paper-vs-code discrepancy
 
 `rl_benchmarks/models/slide_models/chowder.py` is essentially the same architecture as `fgfr3mut/chowder.py` (`TilesMLP`, `ExtremeLayer`, `MLP`, Xavier-uniform init, same docstring citing Courtiol et al.), generalized with configurable `n_top`/`n_bottom` and hidden-layer sizes. Its default config (`conf/slide_level_task/cross_validation/model/chowder.yaml`) sets:
+
 ```yaml
 mlp_activation:
   _target_: torch.nn.Sigmoid
 ```
+
 This is a **second, independent Owkin codebase** using `Sigmoid` (not `ReLU`) as the Chowder MLP activation — corroborating the §Step 5 conclusion that the paper's "ReLU activation" phrase is imprecise and the actual family of Owkin Chowder implementations uses `Sigmoid`.
 
 ### 7b. It has an actual working MIL training loop — `TorchTrainer`
 
 `rl_benchmarks/trainers/torch_trainer.py:TorchTrainer.train()` is a complete, runnable train/val loop for exactly this class of model (Chowder or other slide-MIL aggregators on precomputed tile features): standard PyTorch loop, `DataLoader(shuffle=True, drop_last=True)` for train / `drop_last=False` for val, forward/backward per epoch, metrics computed every epoch, no early stopping (runs the full fixed `num_epochs`). Defaults and an example config (`conf/slide_level_task/cross_validation/test_ncv.yaml`, for a different task — TCGA-COAD overall survival):
 
-| Hyperparameter | `TorchTrainer` class default | Example task config value |
-|---|---|---|
-| Optimizer | `torch.optim.Adam` | `torch.optim.Adam` |
-| Learning rate | `1.0e-3` | `2.0e-4` |
-| Weight decay | `0.0` | `0.0` |
-| Batch size | `16` | `16` |
-| Epochs | `10` | `5` |
-| Loss | — (passed in) | `CoxLoss` for survival; `rl_benchmarks/losses/bce_with_logits_loss.py:BCEWithLogitsLoss` (thin wrapper on `torch.nn.BCEWithLogitsLoss`) exists in the same repo for classification tasks — this is the exact loss type to use for FGFR3 MUT/WT |
-| Splitting | `rl_benchmarks.val_schemes.NestedCrossValidation`, `split_mode: patient_split`, `stratified: True` | `n_splits_outer=2, n_repeats_outer=1, n_splits_inner=2, n_repeats_inner=1` in the example (task-specific, not fgfr3mut's 25/5) |
+| Hyperparameter | `TorchTrainer` class default                                                                           | Example task config value                                                                                                                                                                                                                             |
+| -------------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Optimizer      | `torch.optim.Adam`                                                                                     | `torch.optim.Adam`                                                                                                                                                                                                                                  |
+| Learning rate  | `1.0e-3`                                                                                               | `2.0e-4`                                                                                                                                                                                                                                            |
+| Weight decay   | `0.0`                                                                                                  | `0.0`                                                                                                                                                                                                                                               |
+| Batch size     | `16`                                                                                                   | `16`                                                                                                                                                                                                                                                |
+| Epochs         | `10`                                                                                                   | `5`                                                                                                                                                                                                                                                 |
+| Loss           | — (passed in)                                                                                           | `CoxLoss` for survival; `rl_benchmarks/losses/bce_with_logits_loss.py:BCEWithLogitsLoss` (thin wrapper on `torch.nn.BCEWithLogitsLoss`) exists in the same repo for classification tasks — this is the exact loss type to use for FGFR3 MUT/WT |
+| Splitting      | `rl_benchmarks.val_schemes.NestedCrossValidation`, `split_mode: patient_split`, `stratified: True` | `n_splits_outer=2, n_repeats_outer=1, n_splits_inner=2, n_repeats_inner=1` in the example (task-specific, not fgfr3mut's 25/5)                                                                                                                      |
 
 **None of these numeric values are confirmed to be what produced the 125 FGFR3MUT checkpoints** (`batch_size=16` matches `fgfr3mut/run_inference.py`'s inference default, which is suggestive but not proof). What this *does* establish: the Adam-optimizer / patient-level-stratified-nested-CV / BCEWithLogitsLoss recipe isn't a guess extrapolated from the unrelated 2018 Chowder paper — it's Owkin's own standard training harness for this exact model family, reusable as-is. To retrain FGFR3MUT from scratch with a real loop instead of writing one from zero: adapt `TorchTrainer` + `Chowder` + `BCEWithLogitsLoss` from this repo, plug in a `Dataset` wrapping your own `features.npy`/label files (same shapes as `fgfr3mut/utils.py:SlideFeaturesDataset`), and set `num_epochs=30` (§6) and `n_top=n_bottom=100` (§Step 5) to match the known FGFR3MUT-specific parameters.
 
@@ -182,3 +184,89 @@ This is a **second, independent Owkin codebase** using `Sigmoid` (not `ReLU`) as
 ---
 
 *Sources: paper Methods pp.8–9 ("Preprocessing of whole-slide images", "FGFR3 mutation prediction"), Fig. 1a, References 24–28; `fgfr3mut/chowder.py`, `fgfr3mut/dataset.py`, `fgfr3mut/utils.py`, `fgfr3mut/run_inference.py`, `README.md` as present in this repo on 2026-09-25; downloaded HuggingFace artifact `output/data_fgfr3_mini/` (features.npy, mask.npy, metadata.json, model checkpoints, filtered_slides_tcga.xlsx, mutations_blca_tcga_pancancer_atlas_cbioportal.txt) inspected directly on 2026-09-25; `github.com/owkin/HistoSSLscaling` (chowder.py, torch_trainer.py, ibot_vit.py, constants.py, test_ncv.yaml, README.md, LICENSE.txt) cloned and inspected directly on 2026-09-25.*
+
+
+
+# Extension goal: mutation-subtype + WHO-grade classification (proposed — not yet implemented)
+
+This section is a **plan**, not a verified reproduction like §1–7 above. Target: extend the existing binary FGFR3 MUT/WT Chowder pipeline into a system that also predicts (a) **which** FGFR3 hotspot is present, and (b) the tumor's **WHO grade** (1/2/3, or the WHO'04 low/high-grade scheme TCGA actually uses) — both directly from the WSI, reusing the tiling + feature-extraction stages already built in this repo.
+
+**Ground-truth constraint that shapes everything below:** FGFR3 status/hotspot comes from bulk SNaPshot PCR / cBioPortal calls — **one label per slide/sample**, never per-cell or per-pixel (§2a). No public dataset gives per-nucleus genotype ground truth for this task. Every paper cited below (including the one this repo already reproduces) trains and validates at the **slide level** with **weak supervision** (MIL) and treats the resulting attention map as a correlational visualization, not a verified per-cell call. WHO grade labels are also recorded per sample (TCGA clinical fields, already parsed into this repo's `data/*/cbioportal_*_sample_clinical.json`, surfaced in `viewer.html`'s "Grade" field) — but unlike genotype, grade *is* a directly visible histomorphological property (nuclear pleomorphism, architecture, mitoses), so it is the better-grounded of the two targets.
+
+### 8a. Which paper covers which step
+
+| Pipeline step                                                               | Paper to follow                                                                                                                                        | Why this one                                                                                                                                                                                                                                                                                 |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tissue detection + tiling                                                   | *(unchanged — already implemented, §Step 1–2 above)*                                                                                              | No new paper needed;`fgfr3mut_tile_wsi.py` already reproduces this stage.                                                                                                                                                                                                                  |
+| Frozen tile-embedding backbone                                              | Saillard et al. (H-optimus-0, ref. 25) — already used; benchmark against UNI/CONCH per the foundation-model MIL survey¹ if H-optimus-0 underperforms | Survey¹ shows UNI/CONCH tile embeddings measurably improve downstream MIL accuracy over smaller backbones for grading/biomarker tasks — worth an ablation, not a mandatory swap.                                                                                                           |
+| Binary FGFR3 MUT/WT (existing task)                                         | Bannier et al. 2024² (already reproduced, §1–7)                                                                                                     | No change — this is the working baseline.                                                                                                                                                                                                                                                   |
+| **Which mutant / hotspot subtype** (new)                              | Hierarchical Deep MIL,*Medical Image Analysis*³                                                                                                     | Same clinical setting (bladder WSI) and same core problem — predicting**multiple distinct gene-mutation classes** (ATM, PIK3CA, ERBB2, FGFR3, ERCC2) from one MIL model instead of one binary model per gene. Directly transferable: replace "5 genes" with "N FGFR3 hotspot groups." |
+| **WHO grade** (new)                                                   | NMGrad⁴ (primary) + "A Novel Self-Learning Framework for Bladder Cancer Grading"⁵ + multi-scale pyramidal CNN⁶                                      | See §8b for what each contributes specifically.                                                                                                                                                                                                                                             |
+| Joint mutation+grade model (optional, if you want one model instead of two) | PA-MIL⁷                                                                                                                                               | Purpose-built for coupling a genotype task with a phenotype/morphology task in one MIL model with a shared attention backbone — exactly this repo's mutation+grade combination.                                                                                                             |
+| Multi-branch, per-class attention/interpretability                          | CLAM⁸                                                                                                                                                 | Gives one attention branch*per output class* (per hotspot, per grade) out of the box — a natural drop-in replacement for Chowder's single-branch scorer when the output is no longer binary.                                                                                              |
+
+### 8b. What NMGrad actually does, concretely (since "weakly-supervised MIL for grading" alone under-specifies it)
+
+NMGrad targets non-muscle-invasive bladder cancer (NMIBC) WHO'04 grading and adds two things beyond a plain Chowder-style model:
+
+1. **Tissue-type filtering before grading tiles are chosen.** It first segments the WSI into urothelium vs. other tissue (stroma, muscle, blood), and *only* urothelium tiles are fed to the grading model — grade is a property of the urothelial lining, and diluting the bag with stromal tiles hurts the attention mechanism's ability to find genuinely diagnostic regions. This repo has no urothelium-specific segmenter yet (see §8c caveat).
+2. **Nested/hierarchical attention aggregation**, not a single flat tile→slide pooling step: tiles are first grouped into *location-dependent regions*, region-level attention scores are computed, and regions are aggregated into the final slide-level WHO'04 grade — an extra hierarchy level between Chowder's flat `TilesMLP → ExtremeLayer → MLP`.
+3. Its attention scores were checked against pathologist-verified high-grade regions and correlated with them — i.e. the same "attention heatmap as interpretability, not ground truth" caveat that applies to this repo's existing FGFR3 heatmap (`reproduce/heatmap.py`) applies here too, but NMGrad is one of the few papers that actually validated the correlation rather than just asserting it.
+
+### 8c. Proposed end-to-end pipeline
+
+```
+WSI
+ │
+ ├─ Stage 0 (existing, unchanged): tissue tiling
+ │    fgfr3mut_tile_wsi.py → 224×224 px tiles @ ~1.0 MPP, ≥60% tissue (Bannier et al. 2024, §1–7 above)
+ │
+ ├─ Stage 0.5 (NEW, gap — see caveat below): urothelium-vs-other tissue-type filter
+ │    Only needed for the grade head (NMGrad §8b point 1). No public urothelium-specific
+ │    segmenter ships anywhere in this repo or cited papers; closest available stand-in is
+ │    the existing per-tile nuclei/cytoplasm foreground mask (tile_masks.npy, this
+ │    session's earlier fix) as a weak proxy for "cellular tissue" vs. stroma/muscle —
+ │    NOT validated as urothelium-specific. Treat as an open research gap, not solved.
+ │
+ ├─ Stage 1 (existing, unchanged): frozen foundation-model tile embeddings
+ │    H-optimus-0 (Saillard et al.²) → 1536-dim/tile, exactly as in fgfr3mut/chowder.py.
+ │    Optional ablation: swap in UNI or CONCH per survey¹ if accuracy needs a boost.
+ │
+ ├─ Stage 2a (existing, unchanged): FGFR3 MUT/WT — Chowder MIL, binary, Bannier et al.²
+ │
+ ├─ Stage 2b (NEW): FGFR3 hotspot subtype — Chowder/CLAM MIL, softmax, N classes
+ │    Follow hierarchical-MIL paper³'s recipe: one MIL model, multi-class output instead
+ │    of one-model-per-gene. Class set: group rare hotspots (§2c above lists 11 activating
+ │    hotspots; this repo's manifest shows only 126 MUT slides total — too few to support
+ │    11 separate classes) into a small number of clinically meaningful groups first
+ │    (e.g. the paper's own Fig. 3 hotspot groupings), not one class per single hotspot.
+ │
+ ├─ Stage 2c (NEW): WHO grade — nested-attention MIL, softmax, grade classes
+ │    Follow NMGrad⁴'s nested tile→region→slide aggregation (§8b point 2). Labels already
+ │    available per-slide in this repo's data/*/cbioportal_*_sample_clinical.json.
+ │    Optional accuracy add-on: fuse PanNuke-derived per-tile nuclear morphometrics
+ │    (pleomorphism, mitotic density) into the tile embedding before pooling, per the
+ │    multi-scale pyramidal CNN paper⁶'s approach of adding finer-scale nuclear detail.
+ │
+ └─ Stage 3 (optional): joint mutation+grade model
+      PA-MIL⁷-style shared attention backbone with two task-specific heads (2b + 2c),
+      trained jointly instead of as two independent models — more data-efficient given
+      how few MUT slides exist, at the cost of extra implementation complexity. Start
+      with 2b and 2c as two separate models; only merge into one PA-MIL-style model if
+      the separate versions show they'd benefit from shared representations.
+```
+
+**Validation**: same k-fold, patient-stratified scheme this repo already documents in §1–7 (`TorchTrainer` + `NestedCrossValidation`, §7b) — report per-class AUROC/F1, and (per NMGrad's own validation approach) sanity-check attention heatmaps against any available pathologist-marked high-grade regions before trusting them as more than a visualization.
+
+### 8d. References
+
+1. Foundation-model + MIL benchmarking survey — multi-cancer comparison of tile-embedding backbones (CTransPath, PathoDuet, PLIP, CONCH, UNI) across MIL methods for grading/biomarker/genotype tasks. "When multiple instance learning meets foundation models: Advancing histological whole slide image analysis," *Medical Image Analysis* (ScienceDirect).
+2. Bannier et al., *AI allows pre-screening of FGFR3 mutational status using routine histology slides of muscle-invasive bladder cancer*, **Nature Communications** 15:10914 (2024), doi:10.1038/s41467-024-55331-6 — the paper already reproduced in §1–7.
+3. "Histopathological bladder cancer gene mutation prediction with hierarchical deep multiple-instance learning," *Medical Image Analysis* (ScienceDirect) — multi-gene (ATM, PIK3CA, ERBB2, FGFR3, ERCC2) MIL from bladder WSIs; template for the multi-class hotspot-subtype head (Stage 2b).
+4. "NMGrad: Advancing Histopathological Bladder Cancer Grading with Weakly Supervised Deep Learning," arXiv:2405.15275 / *PMC11428615* — nested urothelium-filtered, region-hierarchical attention-MIL for WHO'04 NMIBC grading; template for Stage 0.5 + Stage 2c.
+5. "A Novel Self-Learning Framework for Bladder Cancer Grading Using Histopathological Images," arXiv:2106.13559 — self-training with pseudo-labels for grading under limited annotation; relevant if the labeled-grade cohort turns out too small for direct supervision.
+6. "Precise grading of non-muscle invasive bladder cancer with multi-scale pyramidal CNN," *Scientific Reports* (2024), doi:10.1038/s41598-024-77101-6 — multi-scale/finer-detail fusion for grading; template for the optional PanNuke nuclear-morphometrics add-on in Stage 2c.
+7. "PA-MIL: Phenotype-Aware Multiple Instance Learning Guided by Language Prompting and Genotype-to-Phenotype Relationships," arXiv:2602.02558 — joint genotype+phenotype MIL architecture; template for the optional Stage 3 joint model.
+8. Lu, Williamson, Chen, Chen, Barbieri & Mahmood, *Data Efficient and Weakly Supervised Computational Pathology on Whole Slide Images* (CLAM), arXiv:2004.09666, **Nature Biomedical Engineering** (2021) — multi-branch attention-MIL architecture; usable as a drop-in multi-class/multi-branch alternative to Chowder for Stages 2b/2c.
+
+*This section written 2026-09-26, based on a literature search conducted the same day; none of steps 8c has been implemented or validated in this repo yet.*

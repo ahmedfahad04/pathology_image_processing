@@ -12,3 +12,5 @@ data/**
 !output/paper/**
 !output/misc
 !output/misc/**
+scripts/preprocessing/models/*.pth
+scripts/preprocessing/models/*.pth.tar

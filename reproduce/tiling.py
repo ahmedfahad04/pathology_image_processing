@@ -23,6 +23,25 @@ Honest substitutions (documented, tweak later):
   https://huggingface.co/bioptimus/H-optimus-0 then `huggingface-cli login`.
   Output 1536-dim (model card) + 3 coord cols = 1539 cols, same as repo .npy.
 
+Two masks, two different jobs (don't confuse them):
+- `mask.npy` (STEP 1, `UNet_segmentation`): one coarse tissue/matter mask for
+  the WHOLE SLIDE at its lowest-res pyramid level. Only used to decide which
+  tiles clear the >=60% matter rule (fraction_matter*). Cropping/resizing
+  this into a per-tile mask is what `fgfr3mut_tile_wsi.py` used to do wrong:
+  a tile is often smaller than one pixel of this mask, so the crop comes out
+  a uniform white or black block with zero internal detail.
+- `tile_masks.npy` + `tile_masks/*.png` (STEP 4b, `foreground_mask_from_tile`,
+  new): a separate, per-KEPT-tile nuclei+cytoplasm foreground mask, computed
+  from that tile's own RGB pixels at full 224x224 resolution -- not cropped
+  from `mask.npy`. In H&E, nuclei (dark purple/hematoxylin) and cytoplasm
+  (light pink/eosin) are both darker than unstained glass, so a grayscale
+  Otsu threshold (inverted so the darker/stained side is foreground) gives
+  foreground=255 / background=0 with real internal structure, matching
+  `scripts/preprocessing/background_remover.py` (same method used to produce
+  `output/preprocessed_tissue_test/masks/*.png`) and the fix applied in
+  `scripts/preprocessing/fgfr3mut_tile_wsi.py`. Index-aligned with `kept`
+  (and hence with the coord columns of `features.npy`), one PNG per tile.
+
 Run with torch-env (has timm+torch+openslide):
     # smoke test (16 tiles, ~10 min CPU):
     conda run -n torch-env python reproduce/tiling.py --svs image/<file>.svs --out output/tiling_test --max_tiles 16
@@ -34,9 +53,14 @@ import argparse
 import json
 import math
 import re
+import sys
 from pathlib import Path
 
+import cv2
 import numpy as np
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts" / "preprocessing"))
+from background_remover import BackgroundRemover  # noqa: E402
 
 # H-optimus-0 input spec (model card): 224x224, these stats.
 H0_MEAN = np.array([0.707223, 0.578729, 0.703617], dtype=np.float32)
@@ -122,6 +146,15 @@ def extract_tile_oslide(slide, tx: int, ty: int, abs_tile: int,
     return np.asarray(img)
 
 
+def foreground_mask_from_tile(tile_rgb: np.ndarray, remover: BackgroundRemover) -> np.ndarray:
+    """Per-tile nuclei+cytoplasm foreground mask (STEP 4b), from the tile's
+    own RGB pixels -- NOT cropped from the whole-slide `mask.npy` STEP 1
+    matter mask (see module docstring for why that distinction matters).
+    """
+    _, mask, _ = remover.remove_background(tile_rgb)
+    return mask
+
+
 def fraction_matter(tx: int, ty: int, tissue_mask: np.ndarray, footprint: int) -> float:
     """Fraction of the tile footprint flagged as matter (mask at same scale)."""
     m = tissue_mask[ty * footprint:(ty + 1) * footprint, tx * footprint:(tx + 1) * footprint]
@@ -194,7 +227,9 @@ def author_level(extraction_w: int, w0: int, top: int = DYADIC_TOP) -> int:
 
 def build_metadata(svs_path: Path, mpp0: float, extraction_w: int,
                    tile_mpp: float, nb_tiles: int, seed: int, otsu_thresh: int,
-                   reader: str) -> dict:
+                   reader: str, mask_method: str = "otsu",
+                   mask_morphological_disk: int = 2,
+                   mask_min_area_percent: float = 0.1) -> dict:
     """Repo-compatible metadata (same keys as Owkin tiling_tool 11.6.0 output)."""
     import hashlib
     import platform as pf
@@ -235,6 +270,12 @@ def build_metadata(svs_path: Path, mpp0: float, extraction_w: int,
         "sampling_mode": {"mode": "random", "seed": seed},
         "matter_detector": {"name": "Otsu-standin-for-BUNet",
                             "dilatation": 1, "threshold": otsu_thresh},
+        "tile_masks_method": (
+            f"per-tile grayscale Otsu threshold (method={mask_method}, invert=True) on the tile's own RGB "
+            f"pixels: nuclei (dark purple) + cytoplasm (light pink) = foreground=255, glass/background=0"
+        ),
+        "tile_masks_morphological_disk": mask_morphological_disk,
+        "tile_masks_min_area_percent": mask_min_area_percent,
         "features_extractor": "H-optimus-0",
         "level": author_level(extraction_w, w0),
         "tile_size": TILE_PX,
@@ -268,6 +309,12 @@ def main():
                     help="openslide = window reads from level 0 (default if installed)")
     ap.add_argument("--compare_dir", default=None,
                     help="Downloaded features dir to compare tile counts/coords against")
+    ap.add_argument("--mask_method", default="otsu", choices=["otsu", "adaptive", "color_based"],
+                    help="Per-tile nuclei+cytoplasm foreground segmentation method (STEP 4b, default: otsu)")
+    ap.add_argument("--mask_morphological_disk", type=int, default=2,
+                    help="Disk radius for closing small holes in the per-tile foreground mask (default: 2)")
+    ap.add_argument("--mask_min_area_percent", type=float, default=0.1,
+                    help="Remove foreground specks smaller than this %% of tile area (default: 0.1)")
     args = ap.parse_args()
 
     svs_path = Path(args.svs)
@@ -366,6 +413,21 @@ def main():
         tiles_rgb = [extract_tile(page, tx, ty, footprint) for tx, ty in kept]
         del page
 
+    # STEP 4b: per-tile nuclei+cytoplasm foreground masks (own pixels, NOT
+    # cropped from the coarse STEP 1 mask.npy — see module docstring).
+    print(f"STEP 4b generating {len(tiles_rgb)} per-tile foreground masks "
+          f"(method={args.mask_method})...")
+    fg_remover = BackgroundRemover(
+        method=args.mask_method,
+        morphological_disk=args.mask_morphological_disk,
+        min_area_percent=args.mask_min_area_percent,
+        invert=True,
+    )
+    tile_masks = np.stack(
+        [foreground_mask_from_tile(t, fg_remover) for t in tiles_rgb], axis=0
+    ) if tiles_rgb else np.zeros((0, TILE_PX, TILE_PX), dtype=np.uint8)
+    print(f"Tile masks: {tile_masks.shape}")
+
     # STEP 5: features = H_optimus_0(kept) — 1536-dim each
     print(f"STEP 5 embedding {len(tiles_rgb)} tiles with H-optimus-0 ({args.device})...")
     emb = H_optimus_0(tiles_rgb, args.device, args.batch_size)
@@ -388,10 +450,21 @@ def main():
     out_dir.mkdir(parents=True, exist_ok=True)
     np.save(out_dir / "features.npy", slide_rep)
     np.save(out_dir / "mask.npy", tissue_mask.astype(np.float32))
+
+    np.save(out_dir / "tile_masks.npy", tile_masks)
+    tile_masks_dir = out_dir / "tile_masks"
+    tile_masks_dir.mkdir(exist_ok=True)
+    for i in range(len(tile_masks)):
+        cv2.imwrite(str(tile_masks_dir / f"{i:05d}.png"), tile_masks[i])
+
     meta = build_metadata(svs_path, mpp0, extraction_w, tile_mpp,
-                          len(kept), args.seed, otsu_thresh, reader)
+                          len(kept), args.seed, otsu_thresh, reader,
+                          mask_method=args.mask_method,
+                          mask_morphological_disk=args.mask_morphological_disk,
+                          mask_min_area_percent=args.mask_min_area_percent)
     json.dump(meta, open(out_dir / "metadata.json", "w"), indent=2)
-    print(f"Saved: {out_dir}/features.npy, mask.npy, metadata.json")
+    print(f"Saved: {out_dir}/features.npy, mask.npy, tile_masks.npy "
+          f"(+ {len(tile_masks)} tile_masks/*.png), metadata.json")
 
     # 7) test against downloaded reference feature set
     if args.compare_dir:

@@ -73,6 +73,9 @@ except ImportError as exc:
         "pip install openslide-python openslide-bin"
     ) from exc
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from background_remover import BackgroundRemover  # noqa: E402
+
 DEFAULT_GRANDQC_WEIGHTS = Path(__file__).parent / "models" / "grandqc" / "Tissue_Detection_MPP10.pth"
 
 
@@ -320,37 +323,19 @@ def build_tissue_mask_grandqc(
     return tissue_mask, thumb_downsample
 
 
-def crop_tile_mask(
-    tissue_mask: np.ndarray,
-    thumb_downsample: float,
-    x0: int,
-    y0: int,
-    step_l0: int,
-    tile_size: int,
-) -> np.ndarray:
-    """Per-tile mask: crop the slide-level mask over the tile's level-0
-    footprint and resize to tile_size x tile_size.
+def foreground_mask_from_tile(tile: np.ndarray, remover: BackgroundRemover) -> np.ndarray:
+    """Per-tile nuclei+cytoplasm foreground mask, computed from the tile's
+    own RGB pixels (not from the coarse whole-slide tissue-detector mask).
 
-    The crop box uses the exact same level-0 -> mask-pixel mapping as
-    tissue_fraction_in_cell, so `(mask > 0).mean()` over the pre-resize
-    crop equals the tissue fraction that decided whether the tile was kept.
-
-    The mask is far coarser than the tile (e.g. ~22 mask px covering a
-    224x224 tile at MPP10 GrandQC), so the crop is upscaled with linear
-    interpolation and re-binarized at 127 to avoid nearest-neighbour
-    blockiness while keeping the output strictly 0/255.
+    In H&E, nuclei (dark purple/hematoxylin) and cytoplasm (light pink/eosin)
+    are both darker than the unstained glass background, so a grayscale
+    Otsu threshold (inverted so the darker, stained side is foreground)
+    cleanly separates foreground=white / background=black at full tile
+    resolution. This is the same method `background_remover.py` uses to
+    produce e.g. `output/preprocessed_tissue_test/masks/*.png`.
     """
-    mx0 = int(x0 / thumb_downsample)
-    my0 = int(y0 / thumb_downsample)
-    mx1 = max(mx0 + 1, int((x0 + step_l0) / thumb_downsample))
-    my1 = max(my0 + 1, int((y0 + step_l0) / thumb_downsample))
-
-    cell = tissue_mask[my0:my1, mx0:mx1]
-    if cell.size == 0:
-        return np.zeros((tile_size, tile_size), dtype=np.uint8)
-
-    resized = cv2.resize(cell, (tile_size, tile_size), interpolation=cv2.INTER_LINEAR)
-    return np.where(resized >= 127, 255, 0).astype(np.uint8)
+    _, mask, _ = remover.remove_background(tile)
+    return mask
 
 
 def tissue_fraction_in_cell(
@@ -431,11 +416,15 @@ def tile_slide(
     tissue_detector: str = "grandqc",
     grandqc_weights: str = str(DEFAULT_GRANDQC_WEIGHTS),
     device: str = "auto",
+    mask_method: str = "otsu",
+    mask_morphological_disk: int = 2,
+    mask_min_area_percent: float = 0.1,
 ) -> Path:
     """Run the full FGFR3MUT-style tiling pipeline on one slide.
 
     Output: <out_dir>/<slide_stem>/coords.npy      (n_tiles, 2) int32 level-0 (x0, y0)
             <out_dir>/<slide_stem>/tile_masks.npy  (n_tiles, tile_size, tile_size) uint8 0/255,
+                                                   nuclei+cytoplasm foreground=255 / rest=0,
                                                    index-aligned with coords.npy
             <out_dir>/<slide_stem>/tile_masks/<x0>_<y0>.png  (same masks, viewable)
             <out_dir>/<slide_stem>/mask.npy        (uint8 0/255 tissue mask, thumbnail res)
@@ -487,20 +476,35 @@ def tile_slide(
     coords = np.array(candidates, dtype=np.int32)
     np.save(out_slide_dir / "coords.npy", coords)
 
-    log(f"Cropping {len(candidates)} per-tile masks ({tile_size}x{tile_size}) ...")
-    tile_masks = np.stack(
-        [
-            crop_tile_mask(tissue_mask, thumb_downsample, int(x0), int(y0), step_l0, tile_size)
-            for x0, y0 in _tqdm(candidates, desc="[tile_masks]", unit="tile")
-        ],
-        axis=0,
-    ) if candidates else np.zeros((0, tile_size, tile_size), dtype=np.uint8)
-    np.save(out_slide_dir / "tile_masks.npy", tile_masks)
+    fg_remover = BackgroundRemover(
+        method=mask_method,
+        morphological_disk=mask_morphological_disk,
+        min_area_percent=mask_min_area_percent,
+        invert=True,
+    )
 
     tile_masks_dir = out_slide_dir / "tile_masks"
     tile_masks_dir.mkdir(exist_ok=True)
-    for i, (x0, y0) in enumerate(candidates):
+    tiles_dir = out_slide_dir / "tiles"
+    if save_pngs:
+        from PIL import Image
+
+        tiles_dir.mkdir(exist_ok=True)
+
+    log(
+        f"Extracting {len(candidates)} tiles + generating nuclei/cytoplasm "
+        f"foreground masks ({tile_size}x{tile_size}, method={mask_method}) ..."
+    )
+    tile_masks = np.zeros((len(candidates), tile_size, tile_size), dtype=np.uint8)
+    for i, (x0, y0) in enumerate(_tqdm(candidates, desc="[tiles+masks]", unit="tile")):
+        patch = extract_tile(slide, int(x0), int(y0), level, level_downsample, step_l0, tile_size)
+        tile_masks[i] = foreground_mask_from_tile(patch, fg_remover)
         cv2.imwrite(str(tile_masks_dir / f"{x0}_{y0}.png"), tile_masks[i])
+        if save_pngs:
+            Image.fromarray(patch).save(tiles_dir / f"{x0}_{y0}.png")
+        if (i + 1) % 500 == 0:
+            log(f"[tiles+masks] {i + 1}/{len(candidates)} ...")
+    np.save(out_slide_dir / "tile_masks.npy", tile_masks)
     log(f"Saved tile_masks.npy {tile_masks.shape} + {len(candidates)} PNGs -> {tile_masks_dir}")
 
     np.save(out_slide_dir / "mask.npy", tissue_mask)
@@ -519,7 +523,12 @@ def tile_slide(
         "mask_shape": list(tissue_mask.shape),
         "mask_thumb_downsample": thumb_downsample,
         "tile_masks_shape": list(tile_masks.shape),
-        "tile_masks_resolution": "tile_size (upsampled from thumbnail mask, binarized at 127)",
+        "tile_masks_method": (
+            f"per-tile grayscale Otsu threshold (method={mask_method}, invert=True) on the tile's own RGB "
+            f"pixels: nuclei (dark purple) + cytoplasm (light pink) = foreground=255, glass/background=0"
+        ),
+        "tile_masks_morphological_disk": mask_morphological_disk,
+        "tile_masks_min_area_percent": mask_min_area_percent,
         "sampling_mode": {"mode": "random", "seed": seed} if len(candidates) > (max_tiles or 0) else {"mode": "all"},
         "slide_size": list(slide.dimensions),
         "tissue_detector": (
@@ -530,18 +539,6 @@ def tile_slide(
     }
     with open(out_slide_dir / "metadata.json", "w") as f:
         json.dump(metadata, f, indent=2)
-
-    if save_pngs:
-        from PIL import Image
-
-        tiles_dir = out_slide_dir / "tiles"
-        tiles_dir.mkdir(exist_ok=True)
-        log(f"Saving {len(candidates)} tile PNGs -> {tiles_dir} ...")
-        for i, (x0, y0) in enumerate(_tqdm(candidates, desc="[tiles]", unit="tile")):
-            patch = extract_tile(slide, int(x0), int(y0), level, level_downsample, step_l0, tile_size)
-            Image.fromarray(patch).save(tiles_dir / f"{x0}_{y0}.png")
-            if (i + 1) % 500 == 0:
-                log(f"[tiles] {i + 1}/{len(candidates)} ...")
 
     slide.close()
 
@@ -596,6 +593,25 @@ def main():
         help="Path to GrandQC Tissue_Detection_MPP10.pth (download from https://zenodo.org/records/14507273)",
     )
     parser.add_argument("--device", type=str, default="auto", help="auto (default: cuda:0 if GPU available else cpu), cpu, or cuda:0/cuda:1 (falls back to cpu with a warning if no GPU)")
+    parser.add_argument(
+        "--mask_method",
+        type=str,
+        default="otsu",
+        choices=["otsu", "adaptive", "color_based"],
+        help="Per-tile foreground (nuclei+cytoplasm) segmentation method, see background_remover.py (default: otsu)",
+    )
+    parser.add_argument(
+        "--mask_morphological_disk",
+        type=int,
+        default=2,
+        help="Disk radius for closing small holes in the per-tile foreground mask (default: 2)",
+    )
+    parser.add_argument(
+        "--mask_min_area_percent",
+        type=float,
+        default=0.1,
+        help="Remove foreground specks smaller than this %% of tile area (default: 0.1)",
+    )
     args = parser.parse_args()
 
     tile_slide(
@@ -610,6 +626,9 @@ def main():
         tissue_detector=args.tissue_detector,
         grandqc_weights=args.grandqc_weights,
         device=args.device,
+        mask_method=args.mask_method,
+        mask_morphological_disk=args.mask_morphological_disk,
+        mask_min_area_percent=args.mask_min_area_percent,
     )
 
 
