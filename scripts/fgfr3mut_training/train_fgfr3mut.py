@@ -106,6 +106,7 @@ import argparse   # parses command-line flags like --epochs 30 into a Python obj
 import json       # reads the metadata.json files written by the tiling script
 import subprocess  # used below to `git clone` the fgfr3mut dependency if it's missing
 import sys        # lets us edit Python's module search path (sys.path), see below
+import time         # used to measure embedding speed and print a live time estimate/ETA
 from pathlib import Path  # modern, cross-platform way to build file paths
 
 # ---- Third-party imports -------------------------------------------------------
@@ -237,7 +238,7 @@ def load_h_optimus_0(device):
     ).to(device).eval()
 
 
-def embed_slide(svs_path, coords, level, level_ds, step_l0, device, model, batch=8):
+def embed_slide(svs_path, coords, level, level_ds, step_l0, device, model, batch=8, progress_cb=None):
     """Turn one slide's kept tiles into a (N_tiles, 1536) matrix of feature vectors.
 
     Parameters (all come from the tiling script's coords.npy / metadata.json):
@@ -254,6 +255,10 @@ def embed_slide(svs_path, coords, level, level_ds, step_l0, device, model, batch
         model      the already-loaded, frozen H-optimus-0 model (see above)
         batch      how many tiles to feed through the model at once (a bigger
                    batch is faster per-tile but uses more memory)
+        progress_cb  optional callback, called as progress_cb(n_tiles_just_embedded)
+                   after every batch — lets the caller print a running
+                   ETA without embed_slide needing to know anything about
+                   how that ETA is computed/printed (see build_features_from_tiles).
 
     Returns:
         np.ndarray of shape (N_tiles, 1536), one feature vector per input tile.
@@ -293,7 +298,10 @@ def embed_slide(svs_path, coords, level, level_ds, step_l0, device, model, batch
             # .cpu() moves the result off the GPU (if it was on one) back to
             # regular CPU memory so we can convert it to a plain numpy array.
             embs.append(model(x).cpu().numpy().astype(np.float32))
+        n_this_batch = len(cur)
         cur.clear()
+        if progress_cb is not None:
+            progress_cb(n_this_batch)
 
     # Walk through every kept-tile coordinate for this slide.
     for x0, y0 in coords:
@@ -365,9 +373,13 @@ def build_features_from_tiles(tiles_root, slides_dir, feat_dir, labels, device):
     tiles_root, slides_dir, feat_dir = Path(tiles_root), Path(slides_dir), Path(feat_dir)
     feat_dir.mkdir(parents=True, exist_ok=True)  # create the cache folder if missing
 
-    model = None   # H-optimus-0 is loaded lazily — only if we actually need to
-                    # embed at least one slide that isn't already cached (see below)
-    X, y, names = [], [], []
+    # ---- Pass 1: figure out what's already cached vs. what needs embedding ---
+    # We do this as a separate pass (instead of deciding + embedding slide by
+    # slide) so we can print an upfront "here's how many tiles total, here's
+    # roughly how long that'll take" estimate BEFORE committing to what can be
+    # a many-hour CPU job — giving you the chance to Ctrl-C out early instead
+    # of finding out an hour in.
+    slide_plan = []   # (slide_name, lab, tdir, meta, coords, out_path, needs_embed), in label order
     for slide_name, lab in labels.items():
         tdir = tiles_root / slide_name
         meta = json.load(open(tdir / "metadata.json"))
@@ -377,12 +389,71 @@ def build_features_from_tiles(tiles_root, slides_dir, feat_dir, labels, device):
             continue
 
         out = feat_dir / f"{slide_name}.npy"
-        if not out.exists():
+        # BUG THIS FIXES: originally this only checked `not out.exists()` — if
+        # you re-run the TILING script with a different --max_tiles (or a
+        # different tissue detector/seed), coords.npy changes, but a stale
+        # feat_dir/<slide>.npy cached from an OLDER tiling run would still
+        # "exist" and get silently reused as-is. That's not just "fewer tiles
+        # than you'd expect" — the cached embeddings' (x, y) coordinates don't
+        # even match the current coords.npy anymore, so training would run on
+        # tiles that no longer correspond to what's actually in tiles_out/,
+        # with zero warning. So: also re-embed whenever the cached file's own
+        # stored coordinates (columns 1:3, see the comment below) don't
+        # exactly match the coords.npy we just loaded above.
+        needs_embed = True
+        if out.exists():
+            cached = np.load(out, mmap_mode="r")
+            cached_coords = np.asarray(cached[:, 1:3], dtype=np.int64)
+            if cached_coords.shape == coords.shape and np.array_equal(cached_coords, coords.astype(np.int64)):
+                needs_embed = False
+            else:
+                print(f"note: cached features for {slide_name} ({cached_coords.shape[0]} tiles) don't match "
+                      f"current coords.npy ({len(coords)} tiles) -- tiles_out/ was probably re-tiled since "
+                      f"the cache was built; re-embedding.")
+        slide_plan.append((slide_name, lab, tdir, meta, coords, out, needs_embed))
+
+    tiles_to_embed = [coords for (_name, _lab, _tdir, _meta, coords, _out, needs_embed) in slide_plan if needs_embed]
+    total_tiles_to_embed = sum(len(c) for c in tiles_to_embed)
+    n_slides_to_embed = len(tiles_to_embed)
+    if n_slides_to_embed:
+        print(f"{n_slides_to_embed} slide(s) need embedding through H-optimus-0: "
+              f"{total_tiles_to_embed} tiles total on device={device}. This is the slow step "
+              "(see this file's BEGINNER'S GUIDE) -- a live ETA will print as it goes; Ctrl-C anytime to stop.")
+
+    # ---- Pass 2: actually embed whatever needs it, with a live ETA ----------
+    model = None
+    tiles_done = 0          # cumulative tiles embedded so far, across all slides this run
+    embed_clock_start = None  # wall-clock time.time() of the very first batch embedded this run
+    last_eta_print = 0.0     # time.time() of the last ETA line we printed, for throttling
+
+    def on_batch_embedded(n_tiles_in_batch):
+        """Called by embed_slide() after every batch; prints a throttled running ETA."""
+        nonlocal tiles_done, last_eta_print
+        tiles_done += n_tiles_in_batch
+        now = time.time()
+        # Throttle to ~ once every 10 real seconds so this doesn't spam the
+        # console on a fast machine/GPU where batches finish in milliseconds.
+        if now - last_eta_print < 10.0 and tiles_done < total_tiles_to_embed:
+            return
+        last_eta_print = now
+        elapsed = now - embed_clock_start
+        rate = elapsed / tiles_done  # seconds per tile, averaged over everything embedded so far this run
+        remaining = total_tiles_to_embed - tiles_done
+        eta_sec = remaining * rate
+        print(f"  ...{tiles_done}/{total_tiles_to_embed} tiles embedded "
+              f"({rate:.2f}s/tile avg) -- ETA for remaining {remaining} tiles: "
+              f"~{eta_sec / 60:.1f} min ({eta_sec / 3600:.2f} h)")
+
+    X, y, names = [], [], []
+    for slide_name, lab, tdir, meta, coords, out, needs_embed in slide_plan:
+        if needs_embed:
             if model is None:
                 # Only pay the (slow, ~30s+) H-optimus-0 load cost the first
                 # time we actually need to embed something in this run.
                 print("loading H-optimus-0 (once, reused across all slides)...")
                 model = load_h_optimus_0(device)
+            if embed_clock_start is None:
+                embed_clock_start = time.time()  # start the ETA clock on the very first real batch
 
             # The tiling script recorded the tile size at its native scan
             # resolution ("native_mpp") and the resolution we actually wanted
@@ -391,8 +462,13 @@ def build_features_from_tiles(tiles_root, slides_dir, feat_dir, labels, device):
             # is that", accounting for that resolution difference.
             step_l0 = round(224 * meta["target_mpp"] / meta["native_mpp"])
 
+            t_slide_start = time.time()
             e = embed_slide(slides_dir / slide_name, coords, meta["level"],
-                            meta["level_downsample"], step_l0, device, model)
+                            meta["level_downsample"], step_l0, device, model,
+                            progress_cb=on_batch_embedded)
+            slide_dt = time.time() - t_slide_start
+            print(f"embedded {slide_name}: {len(coords)} tiles in {slide_dt:.0f}s "
+                  f"({slide_dt / max(1, len(coords)):.2f}s/tile)")
 
             # Build the [level, x, y, ...1536 embedding values...] rows and
             # save them to disk so future runs can skip re-embedding.
