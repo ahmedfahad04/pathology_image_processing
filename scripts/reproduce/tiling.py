@@ -44,9 +44,9 @@ Two masks, two different jobs (don't confuse them):
 
 Run with torch-env (has timm+torch+openslide):
     # smoke test (16 tiles, ~10 min CPU):
-    conda run -n torch-env python reproduce/tiling.py --svs image/<file>.svs --out output/tiling_test --max_tiles 16
+    conda run -n torch-env python scripts/reproduce/tiling.py --svs image/<file>.svs --out output/tiling_test --max_tiles 16
     # COMPLETE single-image vector (all kept tiles, hours on CPU):
-    conda run -n torch-env python reproduce/tiling.py --svs image/<file>.svs --out output/tiling_full --max_tiles 0 --compare_dir output/data_fgfr3_mini
+    conda run -n torch-env python scripts/reproduce/tiling.py --svs image/<file>.svs --out output/tiling_full --max_tiles 0 --compare_dir output/data_fgfr3_mini
 """
 
 import argparse
@@ -59,7 +59,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts" / "preprocessing"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "preprocessing"))
 from background_remover import BackgroundRemover  # noqa: E402
 
 # H-optimus-0 input spec (model card): 224x224, these stats.

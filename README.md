@@ -68,6 +68,54 @@ python scripts/analysis/fetch_cbioportal_data.py --file-list output/misc/tcga_bl
 python scripts/analysis/analyze_fgfr3_mutations.py --data-dir data --out-dir output/mutation_analysis
 ```
 
+### 6. Train the FGFR3MUT Model (Chowder MIL)
+
+Reproduces the FGFR3MUT paper's pipeline (SVS tiles → H-optimus-0 features → Chowder MIL). See `docs/fgfr3mut_pipeline/training.md` for the full spec. All generated output (tiles, cached features, checkpoints) is written under `./results/`.
+
+Both `train_fgfr3mut.py` and `infer_fgfr3mut.py` depend on Bannier et al.'s own paper code (the `fgfr3mut` Python package: Chowder model, bootstrap metrics, etc.). It isn't vendored in this repo's git history — on first run, either script automatically `git clone`s it from [github.com/PABannier/fgfr3mut](https://github.com/PABannier/fgfr3mut) into `scripts/fgfr3mut_training/fgfr3mut/` if it isn't already there (requires `git` to be installed). Later runs reuse that same clone.
+
+```bash
+pip install -r scripts/fgfr3mut_training/requirements.txt
+
+# A. Tile each SVS (--save_pngs also writes the real tile images, not just tissue masks)
+for S in image/*.svs; do
+  python scripts/preprocessing/fgfr3mut_tile_wsi.py --svs_path "$S" \
+    --out_dir ./results/tiles_out --tissue_detector otsu --device auto \
+    --target_mpp 1.0 --tile_size 224 --min_tissue_fraction 0.60 \
+    --max_tiles 5000 --seed 0 --save_pngs
+done
+
+# B. Embed tiles with H-optimus-0 + train the Chowder ensemble
+# labels.csv columns: slide,label   (slide = "<name>.svs", label 0=WT/1=MUT)
+python scripts/fgfr3mut_training/train_fgfr3mut.py \
+  --tiles_root ./results/tiles_out --slides_dir ./image \
+  --labels_csv ./results/labels.csv --epochs 5
+
+# C. Smoke test (synthetic data, no SVS/GPU needed)
+python scripts/fgfr3mut_training/train_fgfr3mut.py --smoke_test --out_dir /tmp/fgfr3_smoke --epochs 1
+```
+
+`--device` defaults to `auto` (GPU if available, else CPU) in both scripts. `--feat_dir`/`--out_dir` for the training script default to `./results/features_cache` and `./results/models_trained`.
+
+### 7. Run Inference / Check Model Performance
+
+Loads every checkpoint in `results/models_trained/`, ensembles their predictions (mean of `sigmoid(logit)` per slide), and computes **two** performance reports against `labels.csv`, both saved to disk (not just printed):
+
+1. A simple fixed-threshold report: accuracy + confusion matrix at `--threshold` (default 0.5).
+2. The **same metrics the FGFR3MUT paper itself reports** (Table 1 / Fig. 2), computed by reusing the paper's own `fgfr3mut/bootstrap.py:compute_ci_with_bootstrap()`: AUC, AP, Sensitivity, Specificity, PPV, NPV — each with a 95% bootstrap confidence interval (1000 resamples by default) — using an operating threshold chosen to hit a target sensitivity (default 92%, `--target_sens`) rather than a naive 0.5 cutoff. See the script's own top-of-file "WHICH METRICS, AND WHERE THEY COME FROM" section for the full explanation.
+
+Reuses `train_fgfr3mut.py`'s own feature-loading code, so it's guaranteed to embed tiles the same way training did (and reuses the `results/features_cache/` cache instead of re-running H-optimus-0).
+
+```bash
+python scripts/fgfr3mut_training/infer_fgfr3mut.py \
+  --tiles_root ./results/tiles_out --slides_dir ./image \
+  --labels_csv ./results/labels.csv --n_extreme 40
+```
+
+`--n_extreme` **must match** whatever Chowder's `ExtremeLayer` was actually trained with — `train_fgfr3mut.py` auto-shrinks it (and prints `note: n_extreme reduced to X`) whenever a slide has fewer than `2*n_extreme` tiles; using the wrong value fails with a tensor "size mismatch" error.
+
+Outputs: per-slide predictions to `./results/predictions.csv` (override with `--out_csv`), every metric above (both reports, plus the ROC operating point) as JSON to `./results/metrics.json` (override with `--metrics_out`), and an **ROC curve figure** to `./results/roc_curve.png` (override with `--roc_out`, or pass `--roc_out none` to skip it) — reproducing the paper's own Fig. 2a-c style (reversed 0-to-1 Specificity axis, AUC/NPV/PPV annotated at the target-sensitivity operating point). Pass `--n_bootstrap 0` to skip the paper-style bootstrap report (useful for a quick check, or when it's the tiny demo dataset in this repo — bootstrap CIs need dozens+ of slides to be meaningful).
+
 ---
 
 ## SVS Viewer — How It Works
@@ -110,6 +158,17 @@ Pathology_Image_Processing/
 │   ├── TCGA-FJ-A871-*.svs     # Main slide (1.1 GB)
 │   ├── TCGA-2F-A9KQ-*.svs     # Additional slides
 │   └── svs_file_format.png    # SVS internal structure diagram
+├── docs/
+│   └── fgfr3mut_pipeline/
+│       └── training.md        # FGFR3MUT training pipeline spec (paper vs. code)
+├── results/                   # Generated FGFR3MUT training/inference output
+│   ├── tiles_out/              # Per-slide tiles/, tile_masks/, coords.npy, metadata.json
+│   ├── features_cache/         # Cached (N,1539) H-optimus-0 embeddings per slide
+│   ├── models_trained/         # Trained Chowder checkpoints (model_*_ep.pt)
+│   ├── labels.csv              # slide,label ground truth used for training/inference
+│   ├── predictions.csv         # infer_fgfr3mut.py output: slide,label,pred_prob,pred_label
+│   ├── metrics.json            # infer_fgfr3mut.py output: AUC/accuracy/confusion matrix + paper-style AUC/AP/Se/Sp/PPV/NPV with bootstrap CIs
+│   └── roc_curve.png           # infer_fgfr3mut.py output: ROC curve figure (paper Fig. 2a-c style)
 ├── scripts/                   # All processing scripts (organized)
 │   ├── preprocessing/         # Image preprocessing pipeline
 │   │   ├── preprocess_pipeline.py     # Main pipeline (tissue-only filtering)
@@ -129,8 +188,18 @@ Pathology_Image_Processing/
 │   │   └── annotate_mutant_locations.py  # Locate & annotate FGFR3 mutants in slides
 │   ├── utils/
 │   │   └── download_svs.sh      # Download TCGA SVS via GDC gdc-client
-│   └── config/
-│       └── requirements.txt     # Python dependencies
+│   ├── config/
+│   │   └── requirements.txt     # Python dependencies
+│   ├── reproduce/               # FGFR3MUT paper reproduction scripts
+│   │   ├── download.py          # Download HuggingFace FGFR3MUT features/checkpoints
+│   │   ├── tiling.py            # Standalone tiling repro/comparison tool
+│   │   └── heatmap.py           # Attention heatmap overlay (paper Fig.2e)
+│   └── fgfr3mut_training/       # FGFR3MUT training + inference entry points
+│       ├── train_fgfr3mut.py    # SVS tiles -> H-optimus-0 features -> Chowder MIL training
+│       ├── infer_fgfr3mut.py    # Ensemble inference + AUC/accuracy/confusion matrix/ROC curve
+│       ├── requirements.txt     # Training-specific Python dependencies
+│       └── fgfr3mut/            # Bannier et al.'s own paper code (Chowder, bootstrap.py, run_inference.py) —
+│                                 # git-ignored; auto-cloned from github.com/PABannier/fgfr3mut on first run
 ├── output/                    # All generated outputs
 │   ├── mutation_analysis/     # Fig1-7 figures + report (FGFR3 cohort stats)
 │   │   ├── fig1_prevalence.png ... fig7_histology_surrogates.png

@@ -14,3 +14,8 @@ data/**
 !output/misc/**
 scripts/preprocessing/models/*.pth
 scripts/preprocessing/models/*.pth.tar
+
+# fgfr3mut/ (Bannier et al.'s own paper code: Chowder model, bootstrap metrics, etc.)
+# is an external dependency, not vendored source -- train_fgfr3mut.py / infer_fgfr3mut.py
+# auto-clone it from https://github.com/PABannier/fgfr3mut on first run if it's missing.
+scripts/fgfr3mut_training/fgfr3mut/

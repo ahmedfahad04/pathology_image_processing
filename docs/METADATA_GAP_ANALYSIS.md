@@ -1,7 +1,7 @@
 # Metadata + Code-Gap Analysis: Our Tiling vs Author Pipeline
 
 Compares `output/tiling_test/...4Z-AA7S.../metadata.json` (ours, regenerated
-with `reproduce/tiling.py` repro-1.0 on the **same slide**) against
+with `scripts/reproduce/tiling.py` repro-1.0 on the **same slide**) against
 `output/data_fgfr3_mini/features/...4Z-AA7S.../metadata.json` (authors),
 then lists what the paper (`docs/s41467-024-55331-6.pdf`) describes but the
 author codebase (`https://github.com/PABannier/fgfr3mut`) does not provide,
@@ -35,7 +35,7 @@ with impact on reproducibility.
 ### 1.1 `absolute_tile_size`: fixed (was 896 vs 887)
 - Theirs is pyramid-exact: 224 px × downsample 4 (level 15→17) = 896.
 - Ours was mpp-derived: round(224 / 0.2525) = 887, poisoned by rounded mpp0.
-- Fix applied in `reproduce/tiling.py`: openslide path uses
+- Fix applied in `scripts/reproduce/tiling.py`: openslide path uses
   `footprint = TILE_PX`, `abs_tile = round(TILE_PX * downsample)`; metadata
   uses `round(224 * w0 / extraction_w)`. Takes effect on next rerun.
 
@@ -62,7 +62,7 @@ against released `features.npy` stands, modulo whatever copy the authors used.
 - Status: dyadic 0–17 table reverse-engineered bit-exact (§1); `level`,
   `tile_mpp`, `sampling_mode` all match. Remaining: `absolute_tile_size`
   formula (§1.1), tile-grid edge handling, `(level, tx, ty)` coord semantics.
-- Impact: medium-low now. `reproduce/tiling.py` (openslide path) + schema
+- Impact: medium-low now. `scripts/reproduce/tiling.py` (openslide path) + schema
   parity cover documented behavior; only pixel-geometry details are inferred.
 
 ### 2.3 Feature-extractor mismatch

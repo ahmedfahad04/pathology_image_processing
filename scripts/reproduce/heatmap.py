@@ -17,8 +17,8 @@ How it works:
 
 Usage:
     # fgfr3mut_env ONLY (torch-env's imagecodecs lacks JPEG decode -> onsvs crashes):
-    PYTHONPATH=fgfr3mut conda run -n fgfr3mut_env python reproduce/heatmap.py --data_dir output/data_fgfr3_mini --slide TCGA-CF-A5U8 --out output/heatmaps
-    python reproduce/heatmap.py --data_dir output/data_fgfr3_mini --slide TCGA-FJ-A871 --slide_idx 4 --svs image/TCGA-FJ-A871-01Z-00-DX5.8F79D0A8-5DE6-4159-AA77-61DACB21E867.svs --out output/heatmaps
+    PYTHONPATH=scripts/fgfr3mut_training/fgfr3mut conda run -n fgfr3mut_env python scripts/reproduce/heatmap.py --data_dir output/data_fgfr3_mini --slide TCGA-CF-A5U8 --out output/heatmaps
+    python scripts/reproduce/heatmap.py --data_dir output/data_fgfr3_mini --slide TCGA-FJ-A871 --slide_idx 4 --svs image/TCGA-FJ-A871-01Z-00-DX5.8F79D0A8-5DE6-4159-AA77-61DACB21E867.svs --out output/heatmaps
 
 Outputs in --out:
     attention_<slide>.png   # grid heatmap (reconstructed slide, NaN=background)

@@ -47,8 +47,8 @@ physical resolution as the real pipeline (native_mpp=0.2277 -> picked
 level mpp=0.9108, exactly matching that slide's metadata.json tile_mpp).
 
 Usage:
-    python fgfr3mut_tile_wsi.py --svs_path slide.svs --out_dir ./tiles_out
-    python fgfr3mut_tile_wsi.py --svs_path slide.svs --out_dir ./tiles_out \
+    python fgfr3mut_tile_wsi.py --svs_path slide.svs --out_dir ./results/tiles_out
+    python fgfr3mut_tile_wsi.py --svs_path slide.svs --out_dir ./results/tiles_out \
         --tissue_detector grandqc --device cpu \
         --grandqc_weights ./models/grandqc/Tissue_Detection_MPP10.pth \
         --target_mpp 1.0 --tile_size 224 --min_tissue_fraction 0.60 \

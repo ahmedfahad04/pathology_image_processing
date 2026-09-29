@@ -18,9 +18,9 @@ What I get in --out_dir (same laIt as full download, so
       loeffler_tcga.xlsx                     # Loeffler et al. subset
 
 Usage:
-    python reproduce/download.py --out_dir ./data_fgfr3_mini
-    python reproduce/download.py --out_dir ./data_fgfr3_mini --slides TCGA-2F-A9KQ TCGA-FJ-A871
-    python reproduce/download.py --out_dir ./data_fgfr3_full --full   # fallback: everything (>200GB)
+    python scripts/reproduce/download.py --out_dir ./data_fgfr3_mini
+    python scripts/reproduce/download.py --out_dir ./data_fgfr3_mini --slides TCGA-2F-A9KQ TCGA-FJ-A871
+    python scripts/reproduce/download.py --out_dir ./data_fgfr3_full --full   # fallback: everything (>200GB)
 
 Tweak here for future requirements:
 - PILOT_SLIDES: change IDs to add/remove slides.

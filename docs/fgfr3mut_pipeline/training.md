@@ -211,7 +211,7 @@ NMGrad targets non-muscle-invasive bladder cancer (NMIBC) WHO'04 grading and add
 
 1. **Tissue-type filtering before grading tiles are chosen.** It first segments the WSI into urothelium vs. other tissue (stroma, muscle, blood), and *only* urothelium tiles are fed to the grading model — grade is a property of the urothelial lining, and diluting the bag with stromal tiles hurts the attention mechanism's ability to find genuinely diagnostic regions. This repo has no urothelium-specific segmenter yet (see §8c caveat).
 2. **Nested/hierarchical attention aggregation**, not a single flat tile→slide pooling step: tiles are first grouped into *location-dependent regions*, region-level attention scores are computed, and regions are aggregated into the final slide-level WHO'04 grade — an extra hierarchy level between Chowder's flat `TilesMLP → ExtremeLayer → MLP`.
-3. Its attention scores were checked against pathologist-verified high-grade regions and correlated with them — i.e. the same "attention heatmap as interpretability, not ground truth" caveat that applies to this repo's existing FGFR3 heatmap (`reproduce/heatmap.py`) applies here too, but NMGrad is one of the few papers that actually validated the correlation rather than just asserting it.
+3. Its attention scores were checked against pathologist-verified high-grade regions and correlated with them — i.e. the same "attention heatmap as interpretability, not ground truth" caveat that applies to this repo's existing FGFR3 heatmap (`scripts/reproduce/heatmap.py`) applies here too, but NMGrad is one of the few papers that actually validated the correlation rather than just asserting it.
 
 ### 8c. Proposed end-to-end pipeline
 

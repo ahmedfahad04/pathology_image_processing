@@ -1,0 +1,54 @@
+{
+  "n_checkpoints": 4,
+  "checkpoints": [
+    "model_0_10_ep.pt",
+    "model_0_5_ep.pt",
+    "model_1_10_ep.pt",
+    "model_1_5_ep.pt"
+  ],
+  "n_slides": 5,
+  "n_mut": 3,
+  "n_wt": 2,
+  "fixed_threshold_report": {
+    "threshold": 0.5,
+    "auc": 1.0,
+    "accuracy": 0.4,
+    "confusion_matrix": {
+      "tn": 2,
+      "fp": 0,
+      "fn": 3,
+      "tp": 0
+    }
+  },
+  "paper_style_bootstrap_report": {
+    "med_auc": 1.0,
+    "ci_lower_bound_auc": 1.0,
+    "ci_upper_bound_auc": 1.0,
+    "med_ap": 1.0,
+    "ci_lower_bound_ap": 1.0,
+    "ci_upper_bound_ap": 1.0,
+    "med_se": 1.0,
+    "ci_lower_bound_se": 1.0,
+    "ci_upper_bound_se": 1.0,
+    "med_sp": 1.0,
+    "ci_lower_bound_sp": 1.0,
+    "ci_upper_bound_sp": 1.0,
+    "med_ppv": 1.0,
+    "ci_lower_bound_ppv": 1.0,
+    "ci_upper_bound_ppv": 1.0,
+    "med_npv": 1.0,
+    "ci_lower_bound_npv": 1.0,
+    "ci_upper_bound_npv": 1.0,
+    "med_threshold": 0.3889462947845459,
+    "ci_lower_bound_threshold": 0.3889462947845459,
+    "ci_upper_bound_threshold": 0.3970527648925781
+  },
+  "roc_operating_point": {
+    "target_sens": 0.92,
+    "threshold": 0.3889462947845459,
+    "sensitivity": 1.0,
+    "specificity": 1.0,
+    "ppv": 1.0,
+    "npv": 1.0
+  }
+}
