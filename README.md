@@ -89,7 +89,7 @@ done
 # labels.csv columns: slide,label   (slide = "<name>.svs", label 0=WT/1=MUT)
 python scripts/fgfr3mut_training/train_fgfr3mut.py \
   --tiles_root ./results/tiles_out --slides_dir ./image \
-  --labels_csv ./results/labels.csv --epochs 5
+  --labels_csv ./results/labels.csv --epochs 30
 
 # C. Smoke test (synthetic data, no SVS/GPU needed)
 python scripts/fgfr3mut_training/train_fgfr3mut.py --smoke_test --out_dir /tmp/fgfr3_smoke --epochs 1
