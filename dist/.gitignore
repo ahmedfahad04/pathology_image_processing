@@ -1,0 +1,19 @@
+# Runtime / generated content — do not commit to the shared package
+.venv/
+__pycache__/
+*.pyc
+
+# Slides are large; they are supplied by the user.
+image/*.svs
+image/*.SVS
+
+# Generated experiment outputs (keep the placeholder files)
+data/*
+!data/.gitkeep
+results/*
+!results/.gitkeep
+
+# OS / editor noise
+.DS_Store
+.idea/
+.vscode/
