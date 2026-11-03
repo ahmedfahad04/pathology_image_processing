@@ -4,7 +4,28 @@ Input modes:
   --tiles_root + --slides_dir : embed tiles with H-optimus-0, then train.
   --features_dir             : load precomputed (N, 1539) features.npy files.
 
-Output: one Chowder checkpoint per cross-validation fold under --out_dir.
+Output: one Chowder checkpoint per (repeat, fold) under --out_dir, plus a
+``train_manifest.json`` describing exactly how the folds were built (infer_
+fgfr3mut.py reads it back so its --oof mode can rebuild the SAME split).
+
+CHECKPOINT LAYOUT (mirrors the paper's own ``models/split_<r>/model_<k>_30_ep.pt``):
+  --repeats 1 (default)  ->  model_<fold>_<epochs>_ep.pt            (flat, as before)
+  --repeats N            ->  split_<repeat>/model_<fold>_<epochs>_ep.pt
+  N=25 and --splits 5 is the FGFR3MUT paper's recipe: 25 x 5 = 125 models,
+  30 epochs each.
+
+HOW THE FOLDS ARE BUILT (see make_folds(), the single source of truth shared
+with infer_fgfr3mut.py's --oof mode):
+  * Patient-grouped: every slide of one patient (TCGA-XX-XXXX) stays in the SAME
+    fold, because all of a patient's slides share the patient's genotype —
+    splitting them across train/val would leak the answer. This is the paper's
+    own unit (its metrics are computed per patient).
+  * Stratified by label, shuffled with ``random_state = repeat`` so repeat 0
+    reproduces the historical split and every later repeat is a different
+    partition of the same slides.
+  * n_splits = min(--splits, smallest class count in slides AND in patients),
+    so the script never silently builds an invalid fold; if that is < 2 it stops
+    with an actionable error instead of training nonsense.
 
 Chowder is a multiple-instance learning (MIL) model: it scores every tile,
 keeps the top-100 and bottom-100 scores, and predicts one label per slide.
@@ -13,6 +34,7 @@ The tile encoder (H-optimus-0) is frozen; only Chowder is trained.
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import time
@@ -21,7 +43,7 @@ from pathlib import Path
 import numpy as np
 import torch
 from sklearn.metrics import roc_auc_score
-from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import StratifiedGroupKFold, StratifiedKFold
 from torch.utils.data import DataLoader
 
 # ---------------------------------------------------------------------------
@@ -156,6 +178,92 @@ def load_labels(labels_csv):
     return df.set_index("slide")["label"].astype(float)
 
 
+# ---------------------------------------------------------------------------
+# Fold layout — shared by train_fgfr3mut.py and infer_fgfr3mut.py (--oof)
+# ---------------------------------------------------------------------------
+def patient_id(slide):
+    """``TCGA-XX-XXXX-01Z-00-DX1.<uuid>.svs`` -> ``TCGA-XX-XXXX``.
+
+    Every slide of one patient carries that patient's FGFR3 status, so slides
+    must be grouped by patient when splitting — otherwise the model trains on
+    one slide of a patient and is evaluated on another of the SAME patient
+    (textbook leakage). Non-TCGA file names map to their own stem, i.e. one
+    slide counts as one patient.
+    """
+    name = Path(str(slide)).name
+    m = re.match(r"(TCGA-[A-Za-z0-9]{2}-[A-Za-z0-9]{4})", name)
+    if m:
+        return m.group(1)
+    return name[: -len(".svs")] if name.lower().endswith(".svs") else name
+
+
+def make_folds(y, splits, repeat=0, groups=None):
+    """Rebuild the CV fold layout. SINGLE SOURCE OF TRUTH for train + infer --oof.
+
+    Parameters
+    ----------
+    y      : (n,) label array (1.0 = MUT, 0.0 = WT), in slide order.
+    splits : the --splits value the user asked for (both scripts default to 5,
+             the paper's fold count).
+    repeat : which repeat to build (0-based). Fold membership depends on it
+             (``random_state = repeat``), so repeat 0 == the historical split.
+    groups : per-slide patient id (from ``patient_id()``) or None for
+             slide-level splitting (``--split_unit slide``).
+
+    Returns
+    -------
+    (n_splits, [(train_idx, val_idx), ...])
+
+    Raises
+    ------
+    ValueError with an actionable message when fewer than 2 folds are possible
+    (needs >= 2 slides AND >= 2 patients in the smallest class; >= 5 of each for
+    the paper's 5-fold recipe). Callers surface this as a clean error instead of
+    letting sklearn raise its own cryptic message halfway through training.
+    """
+    y = np.asarray(y)
+    if y.ndim != 1 or len(y) == 0:
+        raise ValueError("no slides to split")
+    classes, counts = np.unique(y.astype(int), return_counts=True)
+    if len(classes) < 2:
+        raise ValueError(
+            f"only one class present ({classes.tolist()}) — need slides of BOTH classes"
+        )
+
+    # A fold's held-out set must contain >=1 member of every class, so the fold
+    # count can never exceed the smallest class — counted in patients too when
+    # grouping, since a whole patient (all its slides) lands in one fold.
+    limit = int(counts.min())
+    unit = "slide"
+    if groups is not None:
+        groups = np.asarray(groups)
+        gpc = [len(np.unique(groups[y.astype(int) == c])) for c in classes]
+        limit = min(limit, int(min(gpc)))
+        unit = "patient"
+
+    n_splits = min(int(splits), limit)
+    if n_splits < 2:
+        detail = (
+            f"smallest class has {limit} {unit}(s)"
+            + (f" across classes {dict(zip(classes.tolist(), [int(c) for c in counts]))} slides"
+               if groups is None else "")
+        )
+        raise ValueError(
+            f"cannot cross-validate: {detail}, so not even 2 folds are possible. "
+            "Need >= 2 slides AND >= 2 patients per class to train at all, and >= 5 per "
+            "class for the paper's 5-fold x 25-repeat (125-model) recipe. Add slides of "
+            "the missing class."
+        )
+
+    if groups is not None:
+        sgkf = StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=repeat)
+        folds = list(sgkf.split(np.zeros(len(y)), y, groups))
+    else:
+        skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=repeat)
+        folds = list(skf.split(np.zeros(len(y)), y))
+    return n_splits, folds
+
+
 def build_features_from_tiles(tiles_root, slides_dir, feat_dir, labels, device):
     """Embed tiles and cache each slide as an (N, 1539) .npy file.
 
@@ -268,7 +376,12 @@ def build_features_from_dir(features_dir, labels, max_tiles=5000):
 # Training
 # ---------------------------------------------------------------------------
 def train_one(Xtr, ytr, Xva, yva, device, args, save_path, n_extreme=N_EXTREME):
-    """Train one Chowder model and return its validation AUC."""
+    """Train one Chowder model; returns (validation AUC, n_extreme actually used).
+
+    The returned n_extreme matters: Chowder's ExtremeLayer size depends on it,
+    so a checkpoint trained with a reduced value can only be loaded again with
+    the matching --n_extreme (infer_fgfr3mut.py reads it from the manifest).
+    """
     # Ensure every slide has at least 2 * n_extreme tiles.
     min_tiles = min(len(x) for x in Xtr + Xva)
     if min_tiles < 2 * n_extreme:
@@ -314,7 +427,7 @@ def train_one(Xtr, ytr, Xva, yva, device, args, save_path, n_extreme=N_EXTREME):
     print(f"{save_path.name}: val AUC={auc:.3f} (n_tr={len(Xtr)}, n_va={len(Xva)})")
 
     torch.save(model.state_dict(), save_path)
-    return auc
+    return auc, n_extreme
 
 
 def predict_ensemble(features, checkpoints, device, batch_size=16, n_extreme=N_EXTREME):
@@ -355,7 +468,17 @@ def main():
     ap.add_argument("--lr", type=float, default=2e-4)
     ap.add_argument("--weight_decay", type=float, default=0.0)
     ap.add_argument("--batch_size", type=int, default=16)
-    ap.add_argument("--splits", type=int, default=5)
+    ap.add_argument("--splits", type=int, default=5,
+                    help="folds per repeat (paper: 5). Capped at the smallest class, counted in "
+                         "--split_unit units — see make_folds()")
+    ap.add_argument("--repeats", type=int, default=1,
+                    help="how many CV repeats to train (paper: 25, i.e. 25 x 5 = 125 models). Every repeat "
+                         "re-splits the slides with random_state=repeat and writes split_<repeat>/model_<fold>_"
+                         "<epochs>_ep.pt, matching the paper's own models/split_<r>/model_<k>_30_ep.pt layout")
+    ap.add_argument("--split_unit", choices=("patient", "slide"), default="patient",
+                    help="indivisible splitting unit: 'patient' (default — the paper's unit; all slides of one "
+                         "patient share one genotype, so they must stay in the same fold) or 'slide' (old "
+                         "behaviour, which leaks a patient across folds when it has 2+ slides)")
     ap.add_argument("--max_tiles", type=int, default=5000, help="cap on tiles/slide (only --features_dir path)")
     ap.add_argument("--device", default="auto", help="auto, cpu, or cuda:0/cuda:1")
     ap.add_argument("--smoke_test", action="store_true", help="synthetic-data end-to-end check, no SVS needed")
@@ -367,39 +490,104 @@ def main():
     out_dir.mkdir(parents=True, exist_ok=True)
 
     if args.smoke_test:
+        # 10 synthetic slides, 5 WT + 5 MUT — deliberately the paper's minimum
+        # for its real recipe (5 patients per class), so --smoke_test --splits 5
+        # --repeats 25 builds the full 125-model layout without needing a SVS.
         rng = np.random.default_rng(0)
-        X = [rng.normal(size=(40 + 10 * (i % 3), IN_FEATURES)).astype(np.float32) for i in range(8)]
-        for i in range(4):
-            X[i + 4] += 1.5   # make the two classes separable
-        y = np.array([0] * 4 + [1] * 4, dtype=float)
+        X = [rng.normal(size=(40 + 10 * (i % 3), IN_FEATURES)).astype(np.float32)
+             for i in range(10)]
+        for i in range(5):
+            X[i + 5] += 1.5   # make the two classes separable
+        y = np.array([0] * 5 + [1] * 5, dtype=float)
+        names = [f"smoke_slide_{i}.svs" for i in range(len(X))]
         print(f"smoke: {len(X)} slides, dim={X[0].shape}")
     else:
         assert args.labels_csv, "need --labels_csv (or --smoke_test)"
         labels = load_labels(args.labels_csv)
         if args.features_dir:
-            X, y, _names = build_features_from_dir(args.features_dir, labels, args.max_tiles)
+            X, y, names = build_features_from_dir(args.features_dir, labels, args.max_tiles)
         else:
             assert args.tiles_root and args.slides_dir, "need --tiles_root + --slides_dir or --features_dir"
-            X, y, _names = build_features_from_tiles(args.tiles_root, args.slides_dir,
-                                                     args.feat_dir, labels, args.device)
+            X, y, names = build_features_from_tiles(args.tiles_root, args.slides_dir,
+                                                    args.feat_dir, labels, args.device)
         print(f"loaded: {len(X)} slides, {int((y == 1).sum())} MUT / {int((y == 0).sum())} WT")
         assert len(X) >= 2 and len(set(y.tolist())) > 1, "need >=2 slides with both classes"
 
-    # Stratified k-fold; each fold produces one checkpoint.
-    min_class_count = int(min(np.bincount(y.astype(int))))
-    n_splits = min(args.splits, min_class_count)
+    # Patient-level splitting (the paper's unit): a patient's slides share one
+    # genotype, so they must never be spread across train/validation folds.
+    groups = [patient_id(n) for n in names] if args.split_unit == "patient" else None
+    if groups is not None and len(set(groups)) != len(names):
+        print(f"note: {len(names)} slides = {len(set(groups))} patients — folds are grouped by patient")
+    try:
+        n_splits, _ = make_folds(y, args.splits, repeat=0, groups=groups)
+    except ValueError as exc:
+        raise SystemExit(f"error: {exc}")
+
     if n_splits < args.splits:
-        print(f"note: --splits reduced {args.splits} -> {n_splits} (smallest class has {min_class_count} slides)")
-    skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=0)
+        print(f"note: --splits reduced {args.splits} -> {n_splits} folds "
+              f"(capped by the smallest class, counted in {args.split_unit}s)")
+    total = n_splits * args.repeats
+    print(f"recipe: {args.split_unit}-level {n_splits}-fold CV x {args.repeats} repeat(s) "
+          f"x {args.epochs} epochs = {total} model(s)")
+    if n_splits < 5 or args.repeats < 25:
+        print(f"note: the FGFR3MUT paper's recipe is 25 repeats x 5 folds = 125 models "
+              f"(yours: {args.repeats} x {n_splits} = {total}) — 5-fold needs >= 5 patients per class")
 
-    ckpts = []
-    for k, (tr, va) in enumerate(skf.split(np.zeros(len(y)), y)):
-        ckpt = out_dir / f"model_{k}_{args.epochs}_ep.pt"
-        train_one([X[i] for i in tr], y[tr], [X[i] for i in va], y[va],
-                  args.device, args, ckpt)
-        ckpts.append(ckpt)
+    # One checkpoint per (repeat, fold). Repeat 0 with --repeats 1 keeps the
+    # historical flat layout, so earlier runs stay loadable as they are.
+    ckpt_records = []
+    for r in range(args.repeats):
+        _, folds = make_folds(y, args.splits, repeat=r, groups=groups)
+        sub_dir = out_dir if args.repeats == 1 else out_dir / f"split_{r}"
+        sub_dir.mkdir(parents=True, exist_ok=True)
+        for k, (tr, va) in enumerate(folds):
+            # Distinct, reproducible init per model: same command -> same
+            # checkpoints, repeat/fold -> different (so the ensemble members
+            # really are independent models rather than clones).
+            torch.manual_seed(100000 * r + 1000 * k + 7)
+            ckpt = sub_dir / f"model_{k}_{args.epochs}_ep.pt"
+            auc, n_extreme_used = train_one([X[i] for i in tr], y[tr],
+                                            [X[i] for i in va], y[va],
+                                            args.device, args, ckpt)
+            ckpt_records.append({
+                "path": str(ckpt.relative_to(out_dir)),
+                "repeat": r, "fold": k,
+                "n_extreme": int(n_extreme_used),
+                "val_auc": None if not np.isfinite(auc) else round(float(auc), 4),
+            })
+        print(f"repeat {r + 1}/{args.repeats}: {len(folds)} checkpoint(s) -> {sub_dir}")
 
-    print(f"saved {len(ckpts)} checkpoints -> {out_dir}")
+    # train_manifest.json: everything infer_fgfr3mut.py needs to rebuild this
+    # exact split (so --oof pairs every slide with the right checkpoint) and to
+    # know which --n_extreme each checkpoint was actually trained with.
+    manifest = {
+        "created": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "labels_csv": "smoke_test" if args.smoke_test else str(args.labels_csv),
+        "slides": list(names),
+        "patients": [patient_id(n) for n in names],
+        "labels": [int(v) for v in np.asarray(y).tolist()],
+        "split_unit": args.split_unit,
+        "splits_requested": int(args.splits),
+        "n_splits": int(n_splits),
+        "repeats": int(args.repeats),
+        "epochs": int(args.epochs),
+        "batch_size": int(args.batch_size),
+        "lr": float(args.lr),
+        "weight_decay": float(args.weight_decay),
+        "max_tiles": int(args.max_tiles),
+        "seed_rule": {
+            "fold_membership": "random_state = repeat "
+                               "(StratifiedGroupKFold when split_unit=patient, else StratifiedKFold)",
+            "model_init": "torch.manual_seed(100000*repeat + 1000*fold + 7)",
+        },
+        "checkpoints": ckpt_records,
+        "n_extreme_values": sorted({c["n_extreme"] for c in ckpt_records}),
+    }
+    (out_dir / "train_manifest.json").write_text(json.dumps(manifest, indent=2))
+
+    layout = " (split_<repeat>/ subfolders)" if args.repeats > 1 else ""
+    print(f"saved {len(ckpt_records)} checkpoints -> {out_dir}{layout}")
+    print(f"wrote {out_dir / 'train_manifest.json'} — infer_fgfr3mut.py reads it to rebuild this split")
     print("Inference: predict_ensemble() = mean(sigmoid(logit)) over checkpoints.")
 
 

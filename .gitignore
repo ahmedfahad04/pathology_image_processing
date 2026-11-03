@@ -2,6 +2,7 @@
 output/*
 !output/mutation_analysis
 !output/mutation_analysis/**
+results/features_cache/**
 !output/mutant_locations
 !output/mutant_locations/**
 __pycache__/

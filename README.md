@@ -94,6 +94,14 @@ python scripts/fgfr3mut_training/train_fgfr3mut.py \
   --tiles_root ./results/tiles_out --slides_dir ./image \
   --labels_csv ./results/labels.csv --epochs 30
 
+#  OR
+python scripts/fgfr3mut_training/train_fgfr3mut.py \
+  --tiles_root ./results/tiles_out \
+  --slides_dir ./image \
+  --labels_csv ./results/labels.csv \
+  --splits 5 --repeats 25 --epochs 30 \
+  --out_dir ./results/models_trained_125
+
 # C. Smoke test (synthetic data, no SVS/GPU needed)
 python scripts/fgfr3mut_training/train_fgfr3mut.py --smoke_test --out_dir /tmp/fgfr3_smoke --epochs 1
 ```
@@ -111,8 +119,27 @@ Reuses `train_fgfr3mut.py`'s own feature-loading code, so it's guaranteed to emb
 
 ```bash
 python scripts/fgfr3mut_training/infer_fgfr3mut.py \
-  --tiles_root ./results/tiles_out --slides_dir ./image \
-  --labels_csv ./results/labels.csv --n_extreme 40
+  --checkpoints_dir ./results/models_trained_125 \
+  --tiles_root ./results/tiles_out 
+  --slides_dir ./image \
+  --labels_csv ./results/labels.csv \
+  --labels_csv ./results/labels.csv \
+  --n_extreme 94
+python scripts/fgfr3mut_training/infer_fgfr3mut.py \
+  --checkpoints_dir ./results/models_trained_125 \
+  --tiles_root ./results/tiles_out \
+  --slides_dir ./image \
+  --labels_csv ./results/labels.csv \
+  --n_extreme 94
+
+# oor
+
+python scripts/fgfr3mut_training/infer_fgfr3mut.py \
+  --checkpoints_dir ./results/models_trained_125 \
+  --tiles_root ./results/tiles_out \
+  --slides_dir ./image \
+  --labels_csv ./results/labels.csv \
+  --oof
 ```
 
 `--n_extreme` **must match** whatever Chowder's `ExtremeLayer` was actually trained with — `train_fgfr3mut.py` auto-shrinks it (and prints `note: n_extreme reduced to X`) whenever a slide has fewer than `2*n_extreme` tiles; using the wrong value fails with a tensor "size mismatch" error.

@@ -21,8 +21,15 @@ WHERE THE LABEL COMES FROM
 ---------------------------
 FGFR3 status is a property of the *sample* (e.g. ``TCGA-2F-A9KQ-01``), and the
 sample id is encoded in every slide's GDC barcode, so the lookup is a join on
-the slide filename. Sources are consulted in this order, and the source that
-answered is reported for every slide:
+the slide filename.  The FIRST source that knows the slide wins, and the source
+that answered is reported for every slide:
+
+  0. ``output/mutation_analysis/per_slide_table.csv``  **ACTIVATING-ONLY**
+     (``FGFR3_status`` column, i.e. one of the 11 activating SNaPshot
+     mutations the paper's label definition counts; disable with
+     ``--no_status_csv``)
+
+  then, only when source 0 doesn't know the slide:
 
   1. ``data/data_manifest.json``          per-slide ``FGFR3_status`` ("MUT"/"WT")
   2. ``data/cbioportal_summary_all.csv``  per-slide ``FGFR3_status`` ("MUTANT"/"WILD-TYPE")
@@ -32,6 +39,21 @@ answered is reported for every slide:
   4. sample-level fallback                status of any other slide of the
                                            same sample (all slides of a sample
                                            share the patient's genotype)
+
+WHY SOURCE 0 IS FIRST (and why the difference is reported, not hidden)
+---------------------------------------------------------------------
+Sources 1-4 answer the question "does this tumour carry ANY FGFR3 mutation?".
+The FGFR3MUT paper (Bannier et al., Nat Commun 2024) defines the POSITIVE class
+as carrying one of the 11 *activating* mutations only: its reference code
+hard-codes the remaining cases to WT (``fgfr3mut/fgfr3mut/dataset.py``,
+``non_activated_fgfr3_patients``), and it lists ``TCGA-4Z-AA81`` among them.
+``per_slide_table.csv`` is this repo's own activating-only re-derivation of the
+same call (``is_mut_activating`` / ``FGFR3_status`` vs ``is_mut_any`` /
+``FGFR3_status_any``), so consulting it first makes labels match the paper's
+positive class.  Whenever source 0 flips a slide that sources 1-4 would have
+called MUTANT, the flip is printed as an "activating-only override" line —
+e.g. ``TCGA-4Z-AA81`` (Q674* truncating, non-activating) is labelled WT, not
+MUTANT.
 
 Usage:
   # regenerate ./results/labels.csv from ./results/tiles_out + ./data
@@ -94,6 +116,12 @@ def parse_sample_id(slide: str) -> str | None:
     if not m:
         return None
     return f"{m.group(1)}-{m.group(2)}"
+
+
+def parse_patient_id(slide: str) -> str | None:
+    """``TCGA-2F-A9KQ-01Z-00-DX1.<uuid>.svs`` -> ``TCGA-2F-A9KQ`` (or None)."""
+    m = BARCODE_RE.match(Path(slide).name)
+    return m.group(1) if m else None
 
 
 def status_to_label(status: str) -> int | None:
@@ -186,6 +214,43 @@ def label_from_mutation_json(folder: Path, sample_id: str | None) -> int | None:
     return None
 
 
+def load_activating_status(
+    status_csv: Path, status_col: str = "FGFR3_status"
+) -> tuple[dict[str, tuple[int, str]], dict[str, tuple[int, str]]]:
+    """ACTIVATING-ONLY FGFR3 status (the paper's positive-class definition).
+
+    Reads ``output/mutation_analysis/per_slide_table.csv`` (or whatever
+    ``--status_csv`` points at) and returns two indexes:
+
+      by_slide   : ``<file>.svs`` -> (label, mutation note)
+      by_patient : ``TCGA-XX-XXXX`` -> (label, mutation note)
+
+    The ``status_col`` column is the activating-only status (``MUT``/``WT``);
+    the coarse ``FGFR3_status_any`` column is deliberately NOT used here (it is
+    what sources 1-4 below approximate).  Both indexes are returned so a slide
+    missing from the table can still be labelled through its patient row.
+    Empty dicts are returned when the file doesn't exist or has no usable
+    rows, which silently falls back to sources 1-4 (with no override printed).
+    """
+    by_slide: dict[str, tuple[int, str]] = {}
+    by_patient: dict[str, tuple[int, str]] = {}
+    if not status_csv.exists():
+        return by_slide, by_patient
+    with open(status_csv, newline="") as fh:
+        for rec in csv.DictReader(fh):
+            fn = rec.get("file_name") or ""
+            label = status_to_label(rec.get(status_col, ""))
+            if label is None:
+                continue   # blank/unknown status: don't override with "unknown"
+            note = rec.get("proteinChange_raw") or ""
+            if fn:
+                by_slide[fn] = (label, note)
+            pid = rec.get("patientId") or parse_patient_id(fn)
+            if pid:
+                by_patient.setdefault(pid, (label, note))
+    return by_slide, by_patient
+
+
 def find_slides(tiles_root: Path) -> list[str]:
     """Slide folder names under tiles_root, sorted.
 
@@ -202,10 +267,49 @@ def find_slides(tiles_root: Path) -> list[str]:
 # ---------------------------------------------------------------------------
 # Label resolution
 # ---------------------------------------------------------------------------
-def resolve_labels(slides: list[str], data_dir: Path) -> tuple[list[dict], list[str]]:
-    """Resolve one label per slide.  Returns (rows, unresolved_slide_names)."""
+def legacy_label(
+    slide: str, data_dir: Path, manifest: dict, summary: dict, sample_status: dict
+) -> tuple[int | None, str]:
+    """Sources 1-4 (the coarse, ANY-FGFR3-mutation definition). -> (label, source)"""
+    if slide in manifest:
+        return manifest[slide][0], "data_manifest.json"
+    if slide in summary:
+        return summary[slide][0], "cbioportal_summary_all.csv"
+
+    # Raw cBioPortal records stored per slide in data/<slide>/.
+    folder = data_dir / Path(slide).stem
+    if folder.is_dir():
+        label = label_from_mutation_json(folder, parse_sample_id(slide))
+        if label is not None:
+            return label, f"{folder.name}/cbioportal_*_mutations.json"
+
+    # Last resort: the genotype of any other slide of the same sample
+    # (all slides of a sample share the patient's genotype).
+    sample = parse_sample_id(slide)
+    if sample and sample in sample_status:
+        return sample_status[sample], f"sample-level fallback ({sample})"
+    return None, ""
+
+
+def resolve_labels(
+    slides: list[str],
+    data_dir: Path,
+    status_csv: Path | None = None,
+    status_col: str = "FGFR3_status",
+) -> tuple[list[dict], list[str], list[tuple]]:
+    """Resolve one label per slide.
+
+    Returns ``(rows, unresolved_slide_names, overrides)`` where each override is
+    ``(slide, coarse_label, activating_only_label, mutation_note)`` — i.e. a
+    slide sources 1-4 would call MUTANT but source 0 (the paper's
+    activating-only definition) calls WT.
+    """
     manifest = load_manifest(data_dir)
     summary = load_summary_csv(data_dir)
+    act_slide: dict[str, tuple[int, str]] = {}
+    act_patient: dict[str, tuple[int, str]] = {}
+    if status_csv is not None:
+        act_slide, act_patient = load_activating_status(status_csv, status_col)
 
     # Sample-level fallback table, built from the per-slide sources.
     sample_status: dict[str, int] = {}
@@ -215,32 +319,30 @@ def resolve_labels(slides: list[str], data_dir: Path) -> tuple[list[dict], list[
 
     rows: list[dict] = []
     unresolved: list[str] = []
+    overrides: list[tuple] = []
 
     for slide in slides:
-        label = None
-        source = ""
+        # --- coarse chain (sources 1-4), used when source 0 doesn't know it ---
+        coarse, coarse_src = legacy_label(slide, data_dir, manifest, summary, sample_status)
 
-        if slide in manifest:
-            label, _ = manifest[slide]
-            source = "data_manifest.json"
-        elif slide in summary:
-            label, _ = summary[slide]
-            source = "cbioportal_summary_all.csv"
+        # --- source 0: activating-only (the paper's positive class) ----------
+        act = act_slide.get(slide)
+        if act is None:
+            pid = parse_patient_id(slide)
+            if pid and pid in act_patient:
+                act = act_patient[pid]
+                act_src = f"{status_csv.name} (activating-only, patient {pid})"
+            else:
+                act_src = None
         else:
-            # Raw cBioPortal records stored per slide in data/<slide>/.
-            folder = data_dir / Path(slide).stem
-            if folder.is_dir():
-                sample = parse_sample_id(slide)
-                label = label_from_mutation_json(folder, sample)
-                if label is not None:
-                    source = f"{folder.name}/cbioportal_*_mutations.json"
+            act_src = f"{status_csv.name} (activating-only)"
 
-        if label is None:
-            # Last resort: the genotype of any other slide of the same sample.
-            sample = parse_sample_id(slide)
-            if sample and sample in sample_status:
-                label = sample_status[sample]
-                source = f"sample-level fallback ({sample})"
+        if act is not None:
+            label, source = act[0], act_src
+            if coarse is not None and coarse != act[0]:
+                overrides.append((slide, coarse, act[0], act[1]))
+        else:
+            label, source = coarse, coarse_src
 
         if label is None:
             unresolved.append(slide)
@@ -256,7 +358,7 @@ def resolve_labels(slides: list[str], data_dir: Path) -> tuple[list[dict], list[
             }
         )
 
-    return rows, unresolved
+    return rows, unresolved, overrides
 
 
 # ---------------------------------------------------------------------------
@@ -276,6 +378,15 @@ def main() -> int:
                     help="optional folder of .svs slides; only used to warn about missing files")
     ap.add_argument("--skip_unlabeled", action="store_true",
                     help="write the slides that could be labeled and skip the rest (instead of failing)")
+    ap.add_argument("--status_csv", default="./output/mutation_analysis/per_slide_table.csv",
+                    help="activating-only FGFR3 status table consulted FIRST — this is the paper's positive "
+                         "class (one of the 11 activating mutations), so it can flip a slide that the coarse "
+                         "sources below call MUTANT (default: ./output/mutation_analysis/per_slide_table.csv)")
+    ap.add_argument("--status_col", default="FGFR3_status",
+                    help="column of --status_csv holding the activating-only status; FGFR3_status_any is the "
+                         "coarse any-mutation one and is NOT used here (default: FGFR3_status)")
+    ap.add_argument("--no_status_csv", action="store_true",
+                    help="ignore --status_csv and use only the legacy any-FGFR3-mutation sources (sources 1-4)")
     ap.add_argument("--dry_run", action="store_true",
                     help="print what would be written, without touching --out_csv")
     args = ap.parse_args()
@@ -283,6 +394,13 @@ def main() -> int:
     tiles_root = Path(args.tiles_root)
     data_dir = Path(args.data_dir)
     out_csv = Path(args.out_csv)
+    status_csv = None if args.no_status_csv else Path(args.status_csv)
+    if status_csv is not None and not status_csv.exists():
+        log(f"WARNING: activating-only status table not found: {status_csv} "
+            f"— falling back to the coarse sources only (any FGFR3 mutation)")
+        status_csv = None
+    elif status_csv is not None:
+        log(f"activating-only status table: {status_csv} (column: {args.status_col})")
 
     if not tiles_root.is_dir():
         log(f"ERROR: tiles root not found: {tiles_root}")
@@ -298,7 +416,9 @@ def main() -> int:
         return 2
     log(f"found {len(slides)} slide(s) under {tiles_root}")
 
-    rows, unresolved = resolve_labels(slides, data_dir)
+    rows, unresolved, overrides = resolve_labels(
+        slides, data_dir, status_csv=status_csv, status_col=args.status_col
+    )
 
     # Report
     log("")
@@ -306,9 +426,23 @@ def main() -> int:
     for r in rows:
         log(f"{r['slide']:<70} {r['label']:<6} {r['status']:<11} {r['source']}")
 
+    if overrides:
+        log("")
+        log("activating-only overrides (paper counts ONLY the 11 activating mutations, so these")
+        log("slides are WILD-TYPE here even though an FGFR3 record exists):")
+        for slide, coarse, act, note in overrides:
+            log(f"  {slide}")
+            log(f"      coarse (any mutation)={coarse} -> activating-only={act}"
+                + (f"  [{note}]" if note else ""))
+
     n_mut = sum(r["label"] for r in rows)
     log("")
     log(f"labeled: {len(rows)}  (MUTANT={n_mut}, WILD-TYPE={len(rows) - n_mut})")
+    smallest = min(n_mut, len(rows) - n_mut)
+    if len(rows) and smallest < 2:
+        log(f"note: smallest class has {smallest} slide(s) — train_fgfr3mut.py needs "
+            ">= 2 per class to cross-validate at all, and >= 5 per class for the paper's "
+            "5-fold recipe (125 models = 25 repeats x 5 folds)")
 
     if unresolved:
         log(f"ERROR: could not determine FGFR3 status for {len(unresolved)} slide(s):")
