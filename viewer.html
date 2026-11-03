@@ -407,6 +407,9 @@
         let fileUrl = null;
         let viewerRef = null;
         let pyramidLevels = [];
+        // Overlay elements (FGFR3 status banner + heatmap) live INSIDE the OSD container.
+        // OSD init / innerHTML="" wipes them, so keep one shared HTML string to (re)inject.
+        const VIEWER_OVERLAY_HTML = '<div id="viewer-mut-banner"></div><div id="heatmap-overlay"><div class="hm-grid" id="hm-grid"></div></div><div id="heatmap-legend"><b>Predicted attention</b><br><span style="display:inline-block;width:12px;height:12px;background:#d32f2f;vertical-align:middle;border-radius:2px"></span> High (mutant-like) &nbsp; <span style="display:inline-block;width:12px;height:12px;background:#ffeb3b;vertical-align:middle;border-radius:2px"></span> Mid &nbsp; <span style="display:inline-block;width:12px;height:12px;background:#1e88e5;vertical-align:middle;border-radius:2px"></span> Low</div>';
         const statusEl = document.getElementById("status");
         const metaStatusEl = document.getElementById("meta-status");
 
@@ -424,8 +427,9 @@
             const u=new URL(location.href); u.hash=name; history.replaceState(null,'',u.toString());
         }
         tabBtns.forEach(b=> b.addEventListener('click', ()=> switchTab(b.dataset.tab)));
-        // hash deep link
-        if(location.hash==='#inspect') switchTab('inspect');
+        // NOTE: the #inspect deep-link check is handled in the init block at the bottom
+        // of this module (switchTab touches `inspectLoaded`, which is declared later —
+        // calling it here would hit the temporal-dead-zone and kill the whole module).
 
         async function populateDropdown(){
             const sel = document.getElementById('imageSelect');
@@ -472,7 +476,7 @@
             if(viewerRef){ try{ viewerRef.destroy(); }catch(e){} viewerRef=null; }
             // re-inject banner+overlay after destroy (OSD clears container)
             const container=document.getElementById('openseadragon1');
-            container.innerHTML = '<div id="viewer-mut-banner"></div><div id="heatmap-overlay"><div class="hm-grid" id="hm-grid"></div></div><div id="heatmap-legend"><b>Predicted attention</b><br><span style="display:inline-block;width:12px;height:12px;background:#d32f2f;vertical-align:middle;border-radius:2px"></span> High (mutant-like) &nbsp; <span style="display:inline-block;width:12px;height:12px;background:#ffeb3b;vertical-align:middle;border-radius:2px"></span> Mid &nbsp; <span style="display:inline-block;width:12px;height:12px;background:#1e88e5;vertical-align:middle;border-radius:2px"></span> Low</div>';
+            container.innerHTML = VIEWER_OVERLAY_HTML;
             loadFileInfo();
             loadMetaDynamic();
             initViewer();
@@ -578,7 +582,10 @@
             statusEl.textContent = "Fetching SVS (Range requests)...";
             metaStatusEl.textContent = "fetching header...";
             try {
-                const tileSources = await OpenSeadragon.GeoTIFFTileSource.getAllTileSources(fileUrl, { logLatency: false, cache: true, slideOnly: true });
+                // cache:false => geotiff.js sends Cache-Control:no-cache,no-store on every
+                // range read. With cache:true Chrome caches the byte-range responses, which
+                // (per GeoTIFFTileSource's authors) breaks tile loading on subsequent loads.
+                const tileSources = await OpenSeadragon.GeoTIFFTileSource.getAllTileSources(fileUrl, { logLatency: false, cache: false, slideOnly: true });
                 statusEl.textContent = `Loaded ${tileSources.length} level(s). Rendering...`;
                 metaStatusEl.textContent = `header ok — ${tileSources.length} levels`;
                 document.getElementById('live-levels').textContent = tileSources.length;
@@ -606,6 +613,10 @@
                     statusEl.textContent = "Image ready - zoom/pan to explore"; statusEl.style.color="green";
                     metaStatusEl.textContent="ready"; metaStatusEl.style.color="green";
                     updateLive(viewer); highlightLevel(viewer);
+                    // container was wiped by initViewer — re-apply the FGFR3 status banner
+                    try{ updateViewerBanner(fileUrl ? fileUrl.split('/').pop() : null); }catch(_){}
+                    // always start at the full-slide overview
+                    setTimeout(()=>{ try{ viewer.viewport.goHome(true); }catch(_){} }, 120);
                 });
                 viewer.addHandler('zoom', ()=>{ updateLive(viewer); highlightLevel(viewer); });
                 viewer.addHandler('pan', ()=>{ updateLive(viewer); highlightLevel(viewer); });
@@ -841,6 +852,12 @@
 
         // ===== Viewer mutant banner + heatmap overlay =====
         function updateViewerBanner(basename){
+            // OSD init (initViewer) wipes the container's innerHTML, removing these
+            // overlay divs — re-inject them if missing so the status banner can show.
+            if(!document.getElementById('viewer-mut-banner')){
+                const c=document.getElementById('openseadragon1');
+                if(c) c.insertAdjacentHTML('afterbegin', VIEWER_OVERLAY_HTML);
+            }
             const banner=document.getElementById('viewer-mut-banner');
             const overlay=document.getElementById('heatmap-overlay');
             const legend=document.getElementById('heatmap-legend');
@@ -1197,6 +1214,8 @@
 
         // init
         (async()=>{
+            // #inspect deep link (safe here: all module declarations have executed)
+            if(location.hash==='#inspect') switchTab('inspect');
             const initial = await populateDropdown();
             fileUrl = `image/${initial}`;
             const param = new URLSearchParams(location.search).get('file');
