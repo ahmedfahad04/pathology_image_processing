@@ -1,0 +1,31 @@
+# Python deps for third_party/E2E-WSI-ABMILX (Python 3.10-3.12), per its TUTORIAL.md.
+# Install order matters: run_e2e_fgfr3.sh installs torch first, then this file,
+# then torchaug with --no-deps (it pins an old torch and would downgrade it).
+#
+# torch>=2.5.1 (modules/vit_mil.py imports torch.nn.attention) is installed
+# separately so you can pick the CUDA build: TORCH_INDEX_URL=https://download.pytorch.org/whl/cu121
+
+timm
+einops
+lmdb
+opencv-python
+pandas<3
+scikit-learn
+torchmetrics
+h5py
+pillow
+numpy
+jpeg4py
+PyTurboJPEG
+scikit-survival
+wandb
+GitPython
+future
+fairscale
+openslide-python
+openslide-bin
+matplotlib
+scipy
+tqdm
+PyYAML
+tensorboardX

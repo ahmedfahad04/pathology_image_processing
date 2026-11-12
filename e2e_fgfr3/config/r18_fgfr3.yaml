@@ -1,0 +1,63 @@
+# E2E ResNet-18 + ABMILX for FGFR3 mutation (TCGA-BLCA), binary WT=0 / MUT=1.
+#
+# Copy of third_party/E2E-WSI-ABMILX/config/e2e/r18_brca_subtyping.yaml (the
+# authors' binary TCGA slide-classification recipe) with only these changes:
+#
+#   cv_fold: 5         the 5 FGFR3 folds, given as --csv_path=<dir with fold_{k}.csv>
+#   val2test: removed  with it, E2E merges the val slides INTO the test set,
+#                      which would break the "test = FGFR3 held-out fold" design
+#   val_ratio: 0.125   must be non-zero, otherwise E2E validates (selects the best
+#                      epoch / early-stops) on the TEST set. The value itself is
+#                      not used to split: the fold CSVs already carry train/val/test
+#
+# Everything else (model, optimiser, epochs, patch sampling, augmentation) is the
+# authors' setting, unchanged.
+
+num_epoch: 75
+max_epoch: 50
+patient: 10
+log_iter: 100
+
+seed: 2021
+cv_fold: 5
+val_ratio: 0.125
+
+# data
+batch_size: 3
+same_psize: 512
+p_batch_size: 512
+img_transform: weak
+crop_scale: 0.25
+img_size: 256
+mul_scale_input: true
+mul_scale_ratio: 4.
+
+num_workers: 6
+pin_memory: true
+channels_last: true
+image_input: true
+lmdb: true
+prefetch_factor: 3
+
+# model
+model: e2e_r18_abmilx
+input_dim: 256
+inner_dim: 256
+act: gelu
+no_mil_bias: true
+mil_norm: ln
+# abmilx
+abx_attn_plus: true
+
+# train
+opt: adamw
+lr: 8e-5
+weight_decay: 0.
+warmup_epochs: 10
+test_type: both_ema
+amp: true
+no_deter_algo: true
+sdpa_type: torch
+sync_bn: true
+pad_enc_bs: true
+all_patch_train: true

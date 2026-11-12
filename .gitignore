@@ -20,3 +20,6 @@ scripts/preprocessing/models/*.pth.tar
 # is an external dependency, not vendored source -- train_fgfr3mut.py / infer_fgfr3mut.py
 # auto-clone it from https://github.com/PABannier/fgfr3mut on first run if it's missing.
 scripts/fgfr3mut_training/fgfr3mut/
+# E2E-ABMILX FGFR3 run (e2e_fgfr3/run_e2e_fgfr3.sh): LMDBs, folds, checkpoints, venv
+results/e2e_fgfr3/
+.venv-e2e/
