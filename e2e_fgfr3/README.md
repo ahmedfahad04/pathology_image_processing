@@ -18,6 +18,8 @@ Everything specific to this experiment lives in `e2e_fgfr3/`.
 
 ## Run it (GPU PC)
 
+Step-by-step, copy-paste commands: **[RUN_GUIDE.md](RUN_GUIDE.md)**. Short version:
+
 Prerequisites: the FGFR3 run's `image/*.svs`, `results/tiles_out/` and
 `results/models_trained_125/train_manifest.json` at the repo root; Python
 3.10–3.12; `libturbojpeg` (`sudo apt install libturbojpeg`).
